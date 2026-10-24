@@ -1,23 +1,28 @@
 // ignore_for_file: unused_element_parameter
 part of '../screens/home_screen.dart';
 
-class _HomeFullscreenPopupBanner extends StatefulWidget {
-  const _HomeFullscreenPopupBanner({
+class HomeFullscreenPopupBanner extends StatefulWidget {
+  const HomeFullscreenPopupBanner({
+    super.key,
     required this.banner,
+    required this.imageProvider,
     required this.onClose,
     required this.onViewed,
+    this.onTap,
   });
 
   final AppHomeBanner banner;
+  final ImageProvider imageProvider;
   final VoidCallback onClose;
   final ValueChanged<String> onViewed;
+  final VoidCallback? onTap;
 
   @override
-  State<_HomeFullscreenPopupBanner> createState() =>
+  State<HomeFullscreenPopupBanner> createState() =>
       _HomeFullscreenPopupBannerState();
 }
 
-class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
+class _HomeFullscreenPopupBannerState extends State<HomeFullscreenPopupBanner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
@@ -27,23 +32,42 @@ class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
     begin: const Offset(0, 1),
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  String? _viewedBannerId;
+  bool _imageFailureScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    widget.onViewed(widget.banner.id);
     _controller.forward();
   }
 
   @override
-  void didUpdateWidget(covariant _HomeFullscreenPopupBanner oldWidget) {
+  void didUpdateWidget(covariant HomeFullscreenPopupBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.banner.id != widget.banner.id) {
-      widget.onViewed(widget.banner.id);
+      _viewedBannerId = null;
+      _imageFailureScheduled = false;
       _controller
         ..value = 0
         ..forward();
     }
+  }
+
+  void _recordLoadedImageView() {
+    final id = widget.banner.id;
+    if (_viewedBannerId == id) return;
+    _viewedBannerId = id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.banner.id == id) widget.onViewed(id);
+    });
+  }
+
+  void _skipFailedImage() {
+    if (_imageFailureScheduled) return;
+    _imageFailureScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onClose();
+    });
   }
 
   @override
@@ -77,20 +101,20 @@ class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
                       aspectRatio: 1080 / 1920,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(18),
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          cacheManager: PosterNetworkImageCache.instance,
-                          maxWidthDiskCache:
-                              PosterNetworkImageLimits.diskFeedMaxWidth,
-                          maxHeightDiskCache:
-                              PosterNetworkImageLimits.diskFeedMaxHeight,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.medium,
-                          placeholder: (_, _) => const _ImageLoadingState(),
-                          errorWidget: (_, _, _) => const _ImageErrorState(
-                            compact: true,
-                            title: 'Banner unavailable',
-                            subtitle: 'Please try again shortly.',
+                        child: GestureDetector(
+                          onTap: widget.onTap,
+                          child: Image(
+                            image: widget.imageProvider,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                            frameBuilder: (_, child, frame, _) {
+                              if (frame != null) _recordLoadedImageView();
+                              return child;
+                            },
+                            errorBuilder: (_, _, _) {
+                              _skipFailedImage();
+                              return const SizedBox.shrink();
+                            },
                           ),
                         ),
                       ),
@@ -106,7 +130,26 @@ class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: IconButton(
-                    tooltip: 'Close',
+                    tooltip: context.strings.localized(
+                      telugu: 'మూసివేయండి',
+                      english: 'Close',
+                      hindi: 'बंद करें',
+                      tamil: 'மூடு',
+                      kannada: 'ಮುಚ್ಚಿ',
+                      malayalam: 'അടയ്ക്കുക',
+                      marathi: 'बंद करा',
+                      gujarati: 'બંધ કરો',
+                      bengali: 'বন্ধ করুন',
+                      punjabi: 'ਬੰਦ ਕਰੋ',
+                      odia: 'ବନ୍ଦ କରନ୍ତୁ',
+                      assamese: 'বন্ধ কৰক',
+                      konkani: 'बंद करात',
+                      nepali: 'बन्द गर्नुहोस्',
+                      meitei: 'লোনশিনবিয়ু',
+                      mizo: 'Khar rawh',
+                      kashmiri: 'بند کٔریو',
+                      ladakhi: 'སྒོ་རྒྱག',
+                    ),
                     onPressed: widget.onClose,
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),
@@ -119,4 +162,3 @@ class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
     );
   }
 }
-

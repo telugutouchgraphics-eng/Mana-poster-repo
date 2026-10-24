@@ -393,12 +393,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return PopScope<PosterProfileData>(
-      canPop: false,
+      canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
+        if (!didPop) {
+          Navigator.of(context).pop(_posterProfile);
         }
-        Navigator.of(context).pop(_posterProfile);
       },
       child: PosterProfileDetailsScreen(
         initialProfile: _posterProfile,

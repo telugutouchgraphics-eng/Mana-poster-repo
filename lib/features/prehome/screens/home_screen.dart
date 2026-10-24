@@ -1595,6 +1595,11 @@ class _HomeScreenState extends State<HomeScreen>
   List<AppHomeBanner> _promoCardBanners = const <AppHomeBanner>[];
   List<AppHomeBanner> _fullscreenPopupBanners = const <AppHomeBanner>[];
   AppHomeBanner? _activeFullscreenPopupBanner;
+  ImageProvider? _fullscreenPopupImageProvider;
+  ImageStream? _fullscreenPopupImageStream;
+  ImageStreamListener? _fullscreenPopupImageListener;
+  bool _fullscreenPopupReady = false;
+  bool _fullscreenPopupShownThisSession = false;
   bool _fullscreenPopupDismissed = false;
   bool _fullscreenPopupDismissedThisSession = false;
   final Set<String> _countedFullscreenPopupBannerIds = <String>{};
@@ -1602,7 +1607,9 @@ class _HomeScreenState extends State<HomeScreen>
   final Set<String> _countedPosterViewIds = <String>{};
   int _fullscreenPopupBannerGeneration = 0;
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
-  Future<void>? _homeBannersLoadFuture;
+  final HomeBannerSessionLoader _homeBannerSessionLoader =
+      HomeBannerSessionLoader();
+  int _homeBannersGeneration = 0;
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _manualEventCategoriesLoadFuture;
   Future<void>? _permanentCategoriesLoadFuture;
@@ -1633,6 +1640,11 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeTemplateProjection? _templateProjectionCache;
   Object? _templateProjectionIdentity;
   List<_CategoryChipData>? _categoryListCache;
+  List<_TemplateItem>? _publishedCategoryTemplates;
+  Future<void>? _categoryPresenceRefreshFuture;
+  int _categoryPresenceGeneration = 0;
+  bool _categoryPresenceLoadedForSession = false;
+  VoidCallback? _refreshMoreCategorySheet;
   Object? _categoryListIdentity;
   AppLanguage? _manualCategoryLanguage;
   bool _adFallbackSlotEnabled = true;
@@ -1725,47 +1737,41 @@ class _HomeScreenState extends State<HomeScreen>
       }
       _searchFocusNode.unfocus();
       FocusManager.instance.primaryFocus?.unfocus();
-      unawaited(() async {
-        await _resolveAndScheduleRemoteHomeStartupTasks();
-        if (!mounted || !_shouldRunRemoteHomeStartupTasks) {
-          return;
-        }
-        await _refreshHomeFeed();
-      }());
+      unawaited(_resolveAndScheduleRemoteHomeStartupTasks());
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 550),
-        _loadAllFeedInterestScores,
+        const Duration(milliseconds: 50),
+        _loadStartupTemplateSnapshot,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 900),
-        _loadReligionPreference,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1150),
+        const Duration(milliseconds: 100),
         _loadRegionSelection,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1400),
+        const Duration(milliseconds: 250),
+        _loadAllFeedInterestScores,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 400),
+        _loadReligionPreference,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 600),
         _loadPartyPreference,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1650),
+        const Duration(milliseconds: 800),
         _loadPoliticalParties,
       );
       _politicalPartySubscription ??= _politicalPartyService
           .watchParties()
           .listen(_applyPoliticalParties, onError: (_) {});
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1800),
+        const Duration(milliseconds: 1000),
         _loadPoliticalPartyLogos,
       );
       _politicalPartyLogoSubscription ??= _politicalPartyLogoService
           .watchLogoUrlsByPartyId()
           .listen(_applyPoliticalPartyLogos, onError: (_) {});
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2100),
-        _loadStartupTemplateSnapshot,
-      );
       _homeDebugLog(
         '[StartupTiming] first_frame t=${_startupStopwatch.elapsedMilliseconds}ms',
       );
@@ -2140,23 +2146,23 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
     _scheduleDeferredHomeStartupTask(
-      const Duration(milliseconds: 6200),
+      const Duration(milliseconds: 200),
       _loadApprovedCreatorTemplatesAfterStartup,
     );
     _scheduleDeferredHomeStartupTask(
-      const Duration(milliseconds: 7200),
+      const Duration(milliseconds: 1500),
       _loadManualEventCategories,
     );
     _scheduleDeferredHomeStartupTask(
-      const Duration(milliseconds: 7600),
+      const Duration(milliseconds: 1700),
       _loadPermanentCategories,
     );
     _scheduleDeferredHomeStartupTask(
-      const Duration(milliseconds: 8200),
+      const Duration(milliseconds: 1900),
       _loadViewerPosterProfile,
     );
     _scheduleDeferredHomeStartupTask(
-      const Duration(milliseconds: 9000),
+      const Duration(milliseconds: 2100),
       _loadHomeBanners,
     );
     _scheduleDeferredHomeStartupTask(
@@ -2185,8 +2191,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadApprovedCreatorTemplatesAfterStartup() async {
     var waitCycles = 0;
-    while (!_startupSnapshotAttemptCompleted && waitCycles < 8) {
-      await Future<void>.delayed(const Duration(milliseconds: 180));
+    while (!_startupSnapshotAttemptCompleted && waitCycles < 4) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       if (!mounted) {
         return;
       }
@@ -2391,14 +2397,19 @@ class _HomeScreenState extends State<HomeScreen>
     _protectHomeScreen();
     if (_shouldRunRemoteHomeStartupTasks) {
       unawaited(_hidePhoneNavigationButtons());
-      unawaited(_loadViewerPosterProfile());
-      unawaited(_loadRegionSelection());
-      unawaited(_loadPartyPreference());
-      unawaited(_loadReligionPreference());
-      unawaited(
-        _TemplateFeedItem.subscriptionBackendService
-            .refreshEntitlementInBackground(forceRefresh: true),
-      );
+      Future<void>.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) {
+          return;
+        }
+        unawaited(_loadViewerPosterProfile());
+        unawaited(_loadRegionSelection());
+        unawaited(_loadPartyPreference());
+        unawaited(_loadReligionPreference());
+        unawaited(
+          _TemplateFeedItem.subscriptionBackendService
+              .refreshEntitlementInBackground(forceRefresh: true),
+        );
+      });
     }
   }
 
@@ -2412,7 +2423,6 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshHomeFeedTimeSlotIfNeeded();
-      unawaited(_refreshHomeFeed());
       unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
       unawaited(_loadReligionPreference());
@@ -2489,6 +2499,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _releaseFullscreenPopupImage();
     WidgetsBinding.instance.removeObserver(this);
     AppRegionService.selectionVersion.removeListener(
       _handleRegionSelectionChanged,
@@ -2553,23 +2564,35 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted || _selectedRegionId == regionId) {
         return;
       }
+      final isFirstRegionHydration = _selectedRegionId.isEmpty;
       setState(() {
         _selectedRegionId = regionId;
+        _publishedCategoryTemplates = null;
+        _categoryPresenceLoadedForSession = false;
+        _categoryPresenceGeneration++;
+        _categoryPresenceRefreshFuture = null;
         _homeBanners = const <AppHomeBanner>[];
         _fullscreenPopupBanners = const <AppHomeBanner>[];
         _activeFullscreenPopupBanner = null;
-        _fullscreenPopupDismissed = false;
-        _fullscreenPopupDismissedThisSession = false;
-        _remoteApprovedTemplates = const <_TemplateItem>[];
+        _releaseFullscreenPopupImage();
+        _fullscreenPopupImageProvider = null;
+        _fullscreenPopupReady = false;
+        _fullscreenPopupBannerGeneration++;
+        _homeBannersGeneration++;
+        _homeBannerSessionLoader.reset();
+        _fullscreenPopupDismissed = _fullscreenPopupDismissedThisSession;
+        if (!isFirstRegionHydration) {
+          _remoteApprovedTemplates = const <_TemplateItem>[];
+          _templatesLoading = true;
+          _templatesLoadingMore = false;
+          _templatesHasMore = true;
+          _templatesLastDocument = null;
+          _lockedAllFeedTemplates = null;
+          _rankedAllFeedTemplates = null;
+          _allFeedRankingReady = false;
+          _allFeedRankingInFlight = false;
+        }
         _manualEventCategories = const <DynamicCategory>[];
-        _templatesLoading = true;
-        _templatesLoadingMore = false;
-        _templatesHasMore = true;
-        _templatesLastDocument = null;
-        _lockedAllFeedTemplates = null;
-        _rankedAllFeedTemplates = null;
-        _allFeedRankingReady = false;
-        _allFeedRankingInFlight = false;
         _hydratedCategorySlugs.clear();
         _recentAllFeedTemplateKeys.clear();
         _dynamicCategoryAvailabilityBySlug.clear();
@@ -2790,8 +2813,9 @@ class _HomeScreenState extends State<HomeScreen>
   bool _matchesTemplate(
     _TemplateItem item,
     AppLanguage language,
-    _CategoryChipData selectedCategory,
-  ) {
+    _CategoryChipData selectedCategory, {
+    bool ignoreSearch = false,
+  }) {
     if (_isTemplateHiddenForReligion(item)) {
       return false;
     }
@@ -2807,7 +2831,7 @@ class _HomeScreenState extends State<HomeScreen>
       ...item.categoryTags,
     ].join(' ').toLowerCase();
 
-    if (query.isNotEmpty && !searchable.contains(query)) {
+    if (!ignoreSearch && query.isNotEmpty && !searchable.contains(query)) {
       return false;
     }
 
@@ -3372,7 +3396,7 @@ class _HomeScreenState extends State<HomeScreen>
         final templates = await _approvedCreatorTemplateService
             .fetchAllApprovedTemplatesForCategory(
               categoryId: primaryTag,
-              source: Source.server,
+              source: Source.serverAndCache,
               scanLimit: _initialPriorityPrimaryFetchSize * 4,
             );
         if (!mounted || templates.isEmpty) {
@@ -3580,6 +3604,7 @@ class _HomeScreenState extends State<HomeScreen>
         now,
         isServerConfirmed: true,
       )) {
+        covered.add(norm);
         continue;
       }
       if (_staticCategorySlugs.contains(rawId)) {
@@ -3708,15 +3733,12 @@ class _HomeScreenState extends State<HomeScreen>
     if (slug.isEmpty) {
       return null;
     }
-    final schedules = const DynamicEventScheduleService().schedulesForYear(
+    final schedule = const DynamicEventScheduleService().schedulesByTagForYear(
       now.year,
       daysBeforeEvent: _dynamicMorePreviewDays,
-    );
-    for (final schedule in schedules) {
-      if (_normalizeTag(schedule.event.slug) == slug &&
-          _dynamicEventMatchesSelectedRegion(schedule.event)) {
-        return _formatCategoryEventDate(schedule);
-      }
+    )[slug];
+    if (schedule != null && _dynamicEventMatchesSelectedRegion(schedule.event)) {
+      return _formatCategoryEventDate(schedule);
     }
     return null;
   }
@@ -3810,28 +3832,24 @@ class _HomeScreenState extends State<HomeScreen>
       return false;
     }
     final today = DateTime(now.year, now.month, now.day);
-    final schedules = const DynamicEventScheduleService().schedulesForYear(
+    final schedule = const DynamicEventScheduleService().schedulesByTagForYear(
       now.year,
       daysBeforeEvent: 0,
-    );
-    for (final schedule in schedules) {
-      if (_normalizeTag(schedule.event.slug) != slug ||
-          !_dynamicEventMatchesSelectedRegion(schedule.event)) {
-        continue;
-      }
-      // Event ended → never show
-      if (today.isAfter(schedule.endDate)) {
-        return false;
-      }
-      // Server has posters + event not yet ended → show immediately (instant upload)
-      if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
-        return true;
-      }
-      // No server posters → only show on actual event day
-      return !today.isBefore(schedule.startDate) &&
-          !today.isAfter(schedule.endDate);
+    )[slug];
+    if (schedule == null || !_dynamicEventMatchesSelectedRegion(schedule.event)) {
+      return false;
     }
-    return false;
+    // Event ended → never show
+    if (today.isAfter(schedule.endDate)) {
+      return false;
+    }
+    // Server has posters + event not yet ended → show immediately (instant upload)
+    if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
+      return true;
+    }
+    // No server posters → only show on actual event day
+    return !today.isBefore(schedule.startDate) &&
+        !today.isAfter(schedule.endDate);
   }
 
   bool _isInactiveExactDynamicTemplateCategory(
@@ -3853,34 +3871,28 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final today = DateTime(now.year, now.month, now.day);
-    final schedules = const DynamicEventScheduleService().schedulesForYear(
+    final schedule = const DynamicEventScheduleService().schedulesByTagForYear(
       now.year,
       daysBeforeEvent: 0,
-    );
-    for (final schedule in schedules) {
-      final eventId = _normalizeTag(schedule.event.id);
-      final eventSlug = _normalizeTag(schedule.event.slug);
-      if (normalized != eventId && normalized != eventSlug) {
-        continue;
-      }
-      if (!_dynamicEventMatchesSelectedRegion(schedule.event)) {
-        return true;
-      }
-      // Event ended → always inactive (hide)
-      if (today.isAfter(schedule.endDate)) {
-        return true;
-      }
-      // Server confirmed posters exist (template from _remoteApprovedTemplates or
-      // availability check) + event not yet ended → show immediately
-      if (isServerConfirmed ||
-          _dynamicCategoryAvailabilityBySlug[normalized] == true) {
-        return false;
-      }
-      // No server posters → inactive if before event start
-      return today.isBefore(schedule.startDate);
+    )[normalized];
+    if (schedule == null) {
+      return false;
     }
-
-    return false;
+    if (!_dynamicEventMatchesSelectedRegion(schedule.event)) {
+      return true;
+    }
+    // Event ended → always inactive (hide)
+    if (today.isAfter(schedule.endDate)) {
+      return true;
+    }
+    // Server confirmed posters exist (template from _remoteApprovedTemplates or
+    // availability check) + event not yet ended → show immediately
+    if (isServerConfirmed ||
+        _dynamicCategoryAvailabilityBySlug[normalized] == true) {
+      return false;
+    }
+    // No server posters → inactive if before event start
+    return today.isBefore(schedule.startDate);
   }
 
   bool _dynamicEventMatchesSelectedRegion(DynamicCalendarEvent event) {
@@ -3955,10 +3967,11 @@ class _HomeScreenState extends State<HomeScreen>
   List<_CategoryChipData> _buildLoadedTemplateDynamicCategories(
     AppLanguage language,
   ) {
-    final loadedTemplateCategoryKeys = _remoteApprovedTemplates
-        .map(_normalizedCategoryForDebug)
-        .where((value) => value.isNotEmpty)
-        .toSet();
+    final loadedTemplateCategoryKeys =
+        (_publishedCategoryTemplates ?? _remoteApprovedTemplates)
+            .map(_normalizedCategoryForDebug)
+            .where((value) => value.isNotEmpty)
+            .toSet();
     if (loadedTemplateCategoryKeys.isEmpty) {
       return const <_CategoryChipData>[];
     }
@@ -4008,6 +4021,11 @@ class _HomeScreenState extends State<HomeScreen>
   void _scheduleDynamicCategoryAvailabilityChecks(
     List<DynamicCategory> activeCalendarCategories,
   ) {
+    if (_shouldRunRemoteHomeStartupTasks ||
+        _publishedCategoryTemplates != null ||
+        _categoryPresenceRefreshFuture != null) {
+      return;
+    }
     final normalizedSlugs =
         activeCalendarCategories
             .map((item) => _normalizeTag(item.slug))
@@ -4083,6 +4101,7 @@ class _HomeScreenState extends State<HomeScreen>
     DynamicCategory category,
     String slug,
   ) async {
+    final generation = _categoryPresenceGeneration;
     _dynamicCategoryAvailabilityInFlight.add(slug);
     try {
       final available = await _approvedCreatorTemplateService
@@ -4091,7 +4110,9 @@ class _HomeScreenState extends State<HomeScreen>
             source: Source.serverAndCache,
           );
       _homeDebugLog('[DynamicAvailability] slug=$slug available=$available');
-      if (!mounted) {
+      if (!mounted ||
+          generation != _categoryPresenceGeneration ||
+          _publishedCategoryTemplates != null) {
         return;
       }
       final previous = _dynamicCategoryAvailabilityBySlug[slug];
@@ -4106,7 +4127,9 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted &&
+          generation == _categoryPresenceGeneration &&
+          _publishedCategoryTemplates == null) {
         _dynamicCategoryAvailabilityBySlug[slug] = false;
       }
     } finally {
@@ -4251,7 +4274,9 @@ class _HomeScreenState extends State<HomeScreen>
       isDynamic: true,
     );
     final categorySignals = _strictDynamicCategorySignals(categoryChip);
-    for (final template in _remoteApprovedTemplates) {
+    for (final template
+        in _publishedCategoryTemplates ?? _remoteApprovedTemplates) {
+      if (_isTemplateHiddenForReligion(template)) continue;
       if (_templateMatchesDynamicCategoryExactly(template, category)) {
         return true;
       }
@@ -4271,6 +4296,9 @@ class _HomeScreenState extends State<HomeScreen>
     final slug = _normalizeTag(category.slug);
     if (slug.isEmpty) {
       return false;
+    }
+    if (_publishedCategoryTemplates != null) {
+      return _hasVisibleTemplateForCategoryChip(category);
     }
     return _hasVisibleTemplateForCategoryChip(category) ||
         _dynamicCategoryAvailabilityBySlug[slug] == true;
@@ -4449,6 +4477,7 @@ class _HomeScreenState extends State<HomeScreen>
       final slug = _normalizeTag(category.slug);
       if (slug.isEmpty ||
           slug == _moreCategorySlug ||
+          !_categoryHasVisiblePosters(category) ||
           _isCategoryHiddenForReligion(category.effectiveSelectionSlug) ||
           _rawCategoryValueMatchesHiddenReligion(
             category.label,
@@ -4499,38 +4528,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _refreshMoreCategoryAvailabilityBeforeOpeningSheet() async {
-    if (!_shouldRunRemoteHomeStartupTasks) {
-      return;
-    }
-    final candidates = _moreCategoryAvailabilityCandidates(
-      IstTimeService.now(),
-    );
-    final pending = <DynamicCategory>[];
-    final futures = <Future<void>>[];
-    final seenSlugs = <String>{};
-    for (final category in candidates) {
-      final slug = _normalizeTag(category.slug);
-      if (slug.isEmpty ||
-          !seenSlugs.add(slug) ||
-          _hasVisibleTemplateForCategoryChip(category)) {
-        continue;
-      }
-      final existing = _dynamicCategoryAvailabilityFutureBySlug[slug];
-      if (existing != null) {
-        futures.add(existing);
-        continue;
-      }
-      pending.add(category);
-    }
-    futures.addAll(pending.map(_checkDynamicCategoryAvailability));
-    if (futures.isEmpty) {
-      return;
-    }
-    try {
-      await Future.wait(futures).timeout(const Duration(seconds: 9));
-    } on TimeoutException {
-      // Open with the availability that has completed instead of blocking UI.
-    }
+    // Reuse the startup snapshot; opening More never starts a new request.
+    final pending = _categoryPresenceRefreshFuture;
+    if (pending != null) await pending;
   }
 
   _CategoryChipData _categoryChipFromDynamicCategory(DynamicCategory category) {
@@ -4628,6 +4628,13 @@ class _HomeScreenState extends State<HomeScreen>
       final selectionSlug = _normalizeTag(chip.effectiveSelectionSlug);
       if (slug.isEmpty ||
           !allowedSlugs.contains(slug) ||
+          (slug != _moreCategorySlug &&
+              slug != _dailyQuizCategorySlug &&
+              !_categoryHasVisiblePosters(chip)) ||
+          (slug == _moreCategorySlug &&
+              _morePopupCategories(
+                scheduleAvailabilityChecks: false,
+              ).isEmpty) ||
           _morePopupCategorySlugs.contains(slug) ||
           !seenSlugs.add(slug) ||
           !seenSelectionSlugs.add(selectionSlug)) {
@@ -4897,22 +4904,32 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadHomeBanners() async {
-    final inFlight = _homeBannersLoadFuture;
-    if (inFlight != null) {
-      return inFlight;
-    }
-    final future = _loadHomeBannersInternal();
-    _homeBannersLoadFuture = future;
-    try {
-      await future;
-    } finally {
-      if (identical(_homeBannersLoadFuture, future)) {
-        _homeBannersLoadFuture = null;
+    if (!mounted || _selectedRegionId.isEmpty) return;
+    return _homeBannerSessionLoader.load(() async {
+      final generation = _homeBannersGeneration;
+      try {
+        // Region restoration can trigger this before Firebase initialization.
+        await FirebaseBootstrap.ensureInitialized();
+        if (!mounted || generation != _homeBannersGeneration) return;
+        await _loadHomeBannersInternal(generation);
+      } catch (error, stackTrace) {
+        _homeDebugLogStack(
+          'Home banner startup load failed: $error',
+          stackTrace,
+        );
+      } finally {
+        if (mounted && generation == _homeBannersGeneration) {
+          setState(() {
+            _fullscreenPopupReady = true;
+            _categoryListCache = null;
+            _categoryListIdentity = null;
+          });
+        }
       }
-    }
+    });
   }
 
-  Future<void> _loadHomeBannersInternal() async {
+  Future<void> _loadHomeBannersInternal(int generation) async {
     final remoteFuture = _appHomeBannerService.fetchBanners();
     final remotePromoFuture = _appHomeBannerService.fetchBanners(
       maxItems: 6,
@@ -4921,16 +4938,14 @@ class _HomeScreenState extends State<HomeScreen>
     final remotePopupFuture = _appHomeBannerService.fetchBanners(
       maxItems: 12,
       placement: 'home_fullscreen_popup',
+      allowCacheFallback: false,
     );
     final cached = await _appHomeBannerService.fetchBannersFromCache();
     final cachedPromo = await _appHomeBannerService.fetchBannersFromCache(
       maxItems: 6,
       placement: 'home_promo_card_carousel',
     );
-    final cachedPopup = await _appHomeBannerService.fetchBannersFromCache(
-      maxItems: 12,
-      placement: 'home_fullscreen_popup',
-    );
+    if (!mounted || generation != _homeBannersGeneration) return;
     if (mounted && cached.isNotEmpty) {
       if (!_sameHomeBannerSequence(_homeBanners, cached)) {
         setState(() => _homeBanners = cached);
@@ -4941,16 +4956,13 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _promoCardBanners = cachedPromo);
       }
     }
-    if (mounted && cachedPopup.isNotEmpty) {
-      if (!_sameHomeBannerSequence(_fullscreenPopupBanners, cachedPopup)) {
-        _applyFullscreenPopupBanners(cachedPopup);
-      }
-    }
-
     final remote = await remoteFuture;
     final remotePromo = await remotePromoFuture;
     final remotePopup = await remotePopupFuture;
-    if (!mounted) {
+    debugPrint(
+      "Home banners ready: category=${remote.length}, promo=${remotePromo.length}, popup=${remotePopup.length}",
+    );
+    if (!mounted || generation != _homeBannersGeneration) {
       return;
     }
     final homeChanged = !_sameHomeBannerSequence(_homeBanners, remote);
@@ -4974,7 +4986,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
     if (popupChanged) {
-      unawaited(_applyFullscreenPopupBanners(remotePopup));
+      await _applyFullscreenPopupBanners(remotePopup);
     }
   }
 
@@ -5461,7 +5473,10 @@ class _HomeScreenState extends State<HomeScreen>
         '[StartupTiming] templates_snapshot_ready '
         't=${_startupStopwatch.elapsedMilliseconds}ms count=${mapped.length}',
       );
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _startupSnapshotAttemptCompleted = true;
+    }
   }
 
   Future<void> _applyStartupTemplateState(
@@ -5599,8 +5614,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    if (_posterScrollController.hasClients &&
-        _posterScrollController.position.isScrollingNotifier.value) {
+    if ((_posterPageController.hasClients &&
+            _posterPageController.position.isScrollingNotifier.value) ||
+        (_posterScrollController.hasClients &&
+            _posterScrollController.position.isScrollingNotifier.value)) {
       await Future<void>.delayed(const Duration(milliseconds: 420));
     }
     if (!mounted) {
@@ -5629,7 +5646,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
       return;
     }
-    final applyAsSingleBatch = phase == 'load_more_merge';
+    final applyAsSingleBatch =
+        phase == 'load_more_merge' || incoming.length <= 40;
     if (applyAsSingleBatch) {
       final lockedMerged = await _extendLockedAllFeedTemplates(
         incoming,
@@ -5789,6 +5807,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (!_shouldRunRemoteHomeStartupTasks) {
       return;
     }
+    unawaited(_refreshPublishedCategoryPresence());
     final inFlight = _approvedTemplatesLoadFuture;
     if (inFlight != null) {
       return inFlight;
@@ -6591,20 +6610,19 @@ class _HomeScreenState extends State<HomeScreen>
           final activeDynamicTags = _activeDynamicAllFeedTags(
             context.currentLanguage,
           );
-          final ranked = await Isolate.run<List<_TemplateItem>>(
-            () => _rankAllFeedTemplatesWorker(
-              _AllFeedRankingWorkerRequest(
-                templates: _remoteApprovedTemplates,
-                slot: _activeHomeFeedTimeSlot,
-                year: now.year,
-                month: now.month,
-                day: now.day,
-                sessionSeed: _allFeedSessionSeed,
-                dynamicTags: activeDynamicTags,
-                recentTemplateKeys: _recentAllFeedTemplateKeys,
-              ),
-            ),
+          // Pass data only. A closure referencing these fields captures the
+          // entire Home state, including controllers that cannot be sent.
+          final request = _AllFeedRankingWorkerRequest(
+            templates: rankingSource,
+            slot: _activeHomeFeedTimeSlot,
+            year: now.year,
+            month: now.month,
+            day: now.day,
+            sessionSeed: _allFeedSessionSeed,
+            dynamicTags: activeDynamicTags,
+            recentTemplateKeys: Set<String>.of(_recentAllFeedTemplateKeys),
           );
+          final ranked = await compute(_rankAllFeedTemplatesWorker, request);
           rankingTask.finish(
             arguments: <String, Object?>{'count': ranked.length},
           );
@@ -6728,7 +6746,61 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted || generation != _fullscreenPopupBannerGeneration) {
       return;
     }
-    setState(() => _setFullscreenPopupBanners(banners, selectedBanner));
+    ImageProvider? provider;
+    if (selectedBanner != null) {
+      provider = ResizeImage.resizeIfNeeded(
+        1080,
+        null,
+        CachedNetworkImageProvider(
+          selectedBanner.imageUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+        ),
+      );
+      var imageFailed = false;
+      // Keep the decoded image live until dismissal, so feed hydration cannot
+      // evict it between startup preparation and the popup's first paint.
+      final stream = provider.resolve(createLocalImageConfiguration(context));
+      final listener = ImageStreamListener((_, _) {}, onError: (_, _) {});
+      stream.addListener(listener);
+      try {
+        await precacheImage(
+          provider,
+          context,
+          onError: (error, _) {
+            imageFailed = true;
+            debugPrint("Home popup image failed: ${error.runtimeType}");
+          },
+        ).timeout(const Duration(seconds: 8));
+      } catch (error) {
+        imageFailed = true;
+        debugPrint("Home popup preparation failed: ${error.runtimeType}");
+      }
+      if (!mounted || generation != _fullscreenPopupBannerGeneration) {
+        stream.removeListener(listener);
+        return;
+      }
+      if (imageFailed) {
+        stream.removeListener(listener);
+        _releaseFullscreenPopupImage();
+        setState(() {
+          _fullscreenPopupBanners = banners;
+          _activeFullscreenPopupBanner = null;
+          _fullscreenPopupImageProvider = null;
+        });
+        return;
+      }
+      _releaseFullscreenPopupImage();
+      _fullscreenPopupImageStream = stream;
+      _fullscreenPopupImageListener = listener;
+    } else {
+      _releaseFullscreenPopupImage();
+    }
+    setState(() {
+      _setFullscreenPopupBanners(banners, selectedBanner);
+      _fullscreenPopupImageProvider = provider;
+    });
   }
 
   void _setFullscreenPopupBanners(
@@ -6802,10 +6874,51 @@ class _HomeScreenState extends State<HomeScreen>
     if (_fullscreenPopupDismissed) {
       return;
     }
+    _releaseFullscreenPopupImage();
     setState(() {
       _fullscreenPopupDismissed = true;
       _fullscreenPopupDismissedThisSession = true;
     });
+  }
+
+  void _releaseFullscreenPopupImage() {
+    final listener = _fullscreenPopupImageListener;
+    if (listener != null) _fullscreenPopupImageStream?.removeListener(listener);
+    _fullscreenPopupImageStream = null;
+    _fullscreenPopupImageListener = null;
+  }
+
+  Future<void> _openFullscreenPopupTarget() async {
+    final target = _activeFullscreenPopupBanner?.ctaTarget.trim() ?? '';
+    if (target.isEmpty) return;
+    final uri = Uri.tryParse(target);
+    if (uri == null) return;
+    if (uri.scheme == 'https' || uri.scheme == 'http') {
+      _dismissFullscreenPopupBanner();
+      await _openExternalPublicUrl(context, target);
+      return;
+    }
+    if (uri.hasScheme || !target.startsWith('/') || target.startsWith('//')) {
+      return;
+    }
+    if (uri.path == AppRoutes.home) {
+      _dismissFullscreenPopupBanner();
+      await _scrollHomeFeedToTop();
+      return;
+    }
+    if (uri.pathSegments.length == 2 &&
+        <String>{'category', 'event'}.contains(uri.pathSegments.first)) {
+      _dismissFullscreenPopupBanner();
+      _selectCategory(uri.pathSegments.last);
+      return;
+    }
+    final route = AppRoutes.map.containsKey(uri.path)
+        ? MaterialPageRoute<void>(builder: AppRoutes.map[uri.path]!)
+        : AppRoutes.resolveDynamicRoute(RouteSettings(name: target));
+    if (route != null) {
+      _dismissFullscreenPopupBanner();
+      await Navigator.of(context).push(route);
+    }
   }
 
   void _recordFullscreenPopupBannerView(String bannerId) {
@@ -6813,6 +6926,7 @@ class _HomeScreenState extends State<HomeScreen>
         !_countedFullscreenPopupBannerIds.add(bannerId)) {
       return;
     }
+    _fullscreenPopupShownThisSession = true;
     _recordAppBannerView(
       bannerId: bannerId,
       debugLabel: 'fullscreen popup banner',
@@ -6916,7 +7030,7 @@ class _HomeScreenState extends State<HomeScreen>
           _templatesHasMore = false;
           _templatesLastDocument = page.lastDocument;
         });
-        return _loadMoreApprovedCreatorTemplatesWindow();
+        return await _loadMoreApprovedCreatorTemplatesWindow();
       }
       if (kDebugMode) {
         final droppedByDedupe = mapped.length - freshCount;
@@ -7062,17 +7176,17 @@ class _HomeScreenState extends State<HomeScreen>
           ? await _fetchPoliticalPartyFeedTemplates(
               categorySlug: normalizedSlug,
               scanLimit: nextLimit,
-              source: Source.server,
+              source: Source.serverAndCache,
             )
           : _isPoliticalFeedSlug(normalizedSlug)
           ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
               scanLimit: nextLimit,
-              source: Source.server,
+              source: Source.serverAndCache,
             )
           : await _approvedCreatorTemplateService
                 .fetchAllApprovedTemplatesForCategory(
                   categoryId: normalizedSlug,
-                  source: Source.server,
+                  source: Source.serverAndCache,
                   scanLimit: nextLimit,
                 );
       if (!mounted || generation != _categoryLoadGeneration) {
@@ -7296,11 +7410,16 @@ class _HomeScreenState extends State<HomeScreen>
         selectedCategory.slug == _allCategorySlug && !allFeedOrderLocked
         ? _rankVisibleAllFeedTemplates(rawFilteredTemplates, language: language)
         : rawFilteredTemplates;
-    if (selectedCategory.slug == _allCategorySlug) {
-      _ensureCurrentSlotAllFeedTemplatesLoaded(
-        language: language,
-        visibleTemplates: filteredTemplates,
-      );
+    if (selectedCategory.slug == _allCategorySlug &&
+        !_currentSlotAllFeedHydrationInFlight) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedCategorySlug == _allCategorySlug) {
+          _ensureCurrentSlotAllFeedTemplatesLoaded(
+            language: language,
+            visibleTemplates: filteredTemplates,
+          );
+        }
+      });
     }
     final normalizedSelectedSlug = _normalizeTag(
       selectedCategory.effectiveSelectionSlug,
@@ -7333,22 +7452,114 @@ class _HomeScreenState extends State<HomeScreen>
     return projection;
   }
 
-  List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
-    if (!_religionSelectionReady) {
-      final identity = Object.hash(
-        language,
-        _religionPreference,
-        _religionSelectionReady,
-      );
-      final cached = _categoryListCache;
-      if (cached != null && _categoryListIdentity == identity) {
-        return cached;
-      }
-      final categories = <_CategoryChipData>[_allCategoryChip()];
-      _categoryListCache = categories;
-      _categoryListIdentity = identity;
-      return categories;
+  bool _categoryHasVisiblePosters(_CategoryChipData category) {
+    final templates = _publishedCategoryTemplates ?? _remoteApprovedTemplates;
+    if (templates.isEmpty) {
+      return true;
     }
+    final slug = _normalizeTag(category.effectiveSelectionSlug);
+    return templates.any((
+      item,
+    ) {
+      final primary = _normalizeTag(item.primaryFirestoreCategoryId ?? '');
+      if (slug.startsWith('party_') &&
+          primary.startsWith('party_') &&
+          primary != slug) {
+        return false;
+      }
+      return _matchesTemplate(
+        item,
+        context.currentLanguage,
+        category,
+        ignoreSearch: true,
+      );
+    });
+  }
+
+  Future<void> _refreshPublishedCategoryPresence() async {
+    if (!mounted ||
+        !_shouldRunRemoteHomeStartupTasks ||
+        _selectedRegionId.isEmpty) {
+      return;
+    }
+    final existing = _categoryPresenceRefreshFuture;
+    if (existing != null) return existing;
+    if (_categoryPresenceLoadedForSession) return;
+    final regionId = _selectedRegionId;
+    final generation = ++_categoryPresenceGeneration;
+    final future = () async {
+      try {
+        final templates = await _approvedCreatorTemplateService
+            .fetchPublishedCategoryPresence(regionId: regionId);
+        final mapped = await _mapTemplatesOffMain(
+          templates,
+          phase: 'category_presence',
+        );
+        if (!mounted ||
+            regionId != _selectedRegionId ||
+            generation != _categoryPresenceGeneration) {
+          return;
+        }
+        var selectionReset = false;
+        setState(() {
+          _publishedCategoryTemplates = mapped;
+          _dynamicCategoryAvailabilityBySlug.clear();
+          for (final item in mapped) {
+            if (_isTemplateHiddenForReligion(item)) continue;
+            final slug = _normalizeTag(item.primaryFirestoreCategoryId ?? '');
+            if (slug.isNotEmpty) {
+              _dynamicCategoryAvailabilityBySlug[slug] = true;
+            }
+          }
+          _categoryListCache = null;
+          _categoryListIdentity = null;
+          _templateProjectionCache = null;
+          _templateProjectionIdentity = null;
+          if (_selectedCategorySlug != _allCategorySlug &&
+              !_categoryHasVisiblePosters(
+                _categoryForSlug(
+                  _selectedCategorySlug,
+                  context.currentLanguage,
+                ),
+              )) {
+            _selectedCategorySlug = _allCategorySlug;
+            _selectedMoreCategorySlug = null;
+            _selectedMoreCategoryChip = null;
+            _categoryLoadingSlug = null;
+            _categoryLoadGeneration++;
+            selectionReset = true;
+          }
+          if (_moreCategorySheetOpen) {
+            _categoryAvailabilityChangedWhileMoreSheetOpen = true;
+          }
+        });
+        if (selectionReset) {
+          _resetAllFeedScrollOrderLock();
+          _schedulePosterFeedResetToTop();
+        }
+        _refreshMoreCategorySheet?.call();
+      } catch (error, stackTrace) {
+        _homeDebugLogStack('Category presence refresh failed', stackTrace);
+      }
+    }();
+    _categoryPresenceRefreshFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_categoryPresenceRefreshFuture, future)) {
+        _categoryPresenceRefreshFuture = null;
+        if (mounted && generation == _categoryPresenceGeneration) {
+          setState(() {
+            _categoryPresenceLoadedForSession = true;
+            _categoryListCache = null;
+            _categoryListIdentity = null;
+          });
+        }
+      }
+    }
+  }
+
+  List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
 
     final availabilityIdentity = Object.hashAll(
       _dynamicCategoryAvailabilityBySlug.entries.toList(growable: false)
@@ -7378,6 +7589,8 @@ class _HomeScreenState extends State<HomeScreen>
       availabilityIdentity,
       manualCategoryIdentity,
       permanentCategoryIdentity,
+      _publishedCategoryTemplates,
+      _remoteApprovedTemplates,
       _startupSnapshotHydrationDeferred,
       DateTime.now().year,
       DateTime.now().month,
@@ -7448,7 +7661,10 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) {
         return;
       }
+      await _loadRegionSelection();
+      if (!mounted) return;
       await Future.wait<void>(<Future<void>>[
+        _refreshPublishedCategoryPresence(),
         _loadHomeBanners(),
         _loadApprovedCreatorTemplates(forceRefresh: true),
         _loadManualEventCategories(),
@@ -8274,9 +8490,13 @@ class _HomeScreenState extends State<HomeScreen>
       _posterPageController.jumpToPage(0);
     }
     _activePosterPageNotifier.value = 0;
+    final category = _categoryForSlug(slug, language);
+    final hasLocalMatches = _remoteApprovedTemplates
+        .any((item) => _matchesTemplate(item, language, category));
     setState(() {
       _selectedCategorySlug = slug;
-      _categoryLoadingSlug = slug == _allCategorySlug ? null : slug;
+      _categoryLoadingSlug =
+          (slug == _allCategorySlug || hasLocalMatches) ? null : slug;
       _activePosterPage = 0;
     });
     _resetAllFeedScrollOrderLock();
@@ -8333,6 +8553,14 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (sheetContext) {
             return StatefulBuilder(
               builder: (context, setSheetState) {
+                _refreshMoreCategorySheet = () {
+                  if (!sheetContext.mounted) return;
+                  setSheetState(() {
+                    popupCategories = _morePopupCategories(
+                      scheduleAvailabilityChecks: false,
+                    );
+                  });
+                };
                 if (!refreshListenerAttached) {
                   refreshListenerAttached = true;
                   availabilityRefreshFuture.whenComplete(() {
@@ -8411,6 +8639,7 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ).whenComplete(() {
           _moreCategorySheetOpen = false;
+          _refreshMoreCategorySheet = null;
           if (_categoryAvailabilityChangedWhileMoreSheetOpen && mounted) {
             _categoryAvailabilityChangedWhileMoreSheetOpen = false;
             setState(() {});
@@ -8468,10 +8697,14 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
     if (needsHydration && mounted && generation == _categoryLoadGeneration) {
-      if (_categoryLoadingSlug != slug) {
-        setState(() => _categoryLoadingSlug = slug);
+      if (matchingCount == 0) {
+        if (_categoryLoadingSlug != slug) {
+          setState(() => _categoryLoadingSlug = slug);
+        }
+        await _topUpSelectedCategoryFromServer(slug, generation);
+      } else {
+        unawaited(_topUpSelectedCategoryFromServer(slug, generation));
       }
-      await _topUpSelectedCategoryFromServer(slug, generation);
     }
     if (mounted &&
         generation == _categoryLoadGeneration &&
@@ -8496,17 +8729,17 @@ class _HomeScreenState extends State<HomeScreen>
         ? await _fetchPoliticalPartyFeedTemplates(
             categorySlug: normalizedSlug,
             scanLimit: fetchLimit,
-            source: Source.server,
+            source: Source.serverAndCache,
           )
         : _isPoliticalFeedSlug(normalizedSlug)
         ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
             scanLimit: fetchLimit,
-            source: Source.server,
+            source: Source.serverAndCache,
           )
         : await _approvedCreatorTemplateService
               .fetchAllApprovedTemplatesForCategory(
                 categoryId: normalizedSlug,
-                source: Source.server,
+                source: Source.serverAndCache,
                 scanLimit: fetchLimit,
               );
     if (!mounted || generation != _categoryLoadGeneration) {
@@ -8577,18 +8810,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (morePopupCategory != null) {
       return morePopupCategory;
     }
-    final staticCategories = _buildStaticCategories();
-    final dynamicCategories = _buildDynamicCategories(
-      IstTimeService.now(),
-      language,
-      templatesLoading: _templatesLoading,
-    );
-    final categories = _mergeCategories(
-      staticCategories,
-      dynamicCategories,
-      _buildSelectedPartyCategories(language),
-    );
-    return categories.firstWhere(
+    final existingCategories =
+        _categoryListCache ?? _buildCategoriesForHome(language);
+    return existingCategories.firstWhere(
       (chip) => chip.slug == slug,
       orElse: () => _CategoryChipData(
         slug: slug,
@@ -8664,18 +8888,8 @@ class _HomeScreenState extends State<HomeScreen>
       _activePosterPage = index;
       _activePosterPageNotifier.value = index;
     }
-    if (_selectedCategorySlug == _allCategorySlug &&
-        _lockedAllFeedTemplates == null &&
-        index > 0) {
-      final visibleTemplates = feedEntries
-          .map((entry) => entry.template)
-          .whereType<_TemplateItem>()
-          .toList(growable: false);
-      if (visibleTemplates.isNotEmpty) {
-        _lockedAllFeedTemplates = visibleTemplates;
-        _templateProjectionCache = null;
-        _templateProjectionIdentity = null;
-      }
+    if (index > 0) {
+      _lockVisibleAllFeedOrder(feedEntries);
     }
     if (index >= 0 && index < feedEntries.length) {
       final item = feedEntries[index].template;
@@ -8690,6 +8904,21 @@ class _HomeScreenState extends State<HomeScreen>
         unawaited(_loadMoreApprovedCreatorTemplates());
       } else {
         unawaited(_loadMoreSelectedCategoryTemplates());
+      }
+    }
+  }
+
+  void _lockVisibleAllFeedOrder(List<_HomeFeedEntry> feedEntries) {
+    if (_selectedCategorySlug == _allCategorySlug &&
+        _lockedAllFeedTemplates == null) {
+      final visibleTemplates = feedEntries
+          .map((entry) => entry.template)
+          .whereType<_TemplateItem>()
+          .toList(growable: false);
+      if (visibleTemplates.isNotEmpty) {
+        _lockedAllFeedTemplates = visibleTemplates;
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
       }
     }
   }
@@ -8861,212 +9090,225 @@ class _HomeScreenState extends State<HomeScreen>
       finalTemplates: templates,
       feedEntriesCount: feedEntries.length,
     );
-    // Keep the poster feed visible as soon as templates are ready. Profile
-    // refresh can continue in parallel without blanking the full home list.
+    // Show the feed as soon as templates are available; do not block feed on popup banner or remote presence.
     final hidePosterFeed =
-        _templatesLoading ||
+        (_templatesLoading && _remoteApprovedTemplates.isEmpty) ||
         (!_religionSelectionReady && _remoteApprovedTemplates.isEmpty);
     final loadingSelectedCategory =
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
+    final showFullscreenPopup =
+        (_fullscreenPopupShownThisSession || !hidePosterFeed) &&
+        _fullscreenPopupReady &&
+        _activeFullscreenPopupBanner != null &&
+        _fullscreenPopupImageProvider != null &&
+        !_fullscreenPopupDismissed;
     final mediaSize = MediaQuery.sizeOf(context);
     final useCompactLandscapeHome = mediaSize.width > mediaSize.height;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FB),
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: <Widget>[
-          Column(
-            children: <Widget>[
-              RepaintBoundary(
-                child: _HomeHeader(
-                  onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
-                  onProfileTap: _openProfile,
-                  viewerPosterProfile: _viewerPosterProfile,
-                  searchController: _searchController,
-                  searchFocusNode: _searchFocusNode,
-                  onSearchChanged: (_) {},
-                  onSearchSubmitted: _openWebsiteSearch,
+    return PopScope<Object?>(
+      canPop: !showFullscreenPopup,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && showFullscreenPopup) _dismissFullscreenPopupBanner();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F6FB),
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: <Widget>[
+            Column(
+              children: <Widget>[
+                RepaintBoundary(
+                  child: _HomeHeader(
+                    onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
+                    onProfileTap: _openProfile,
+                    viewerPosterProfile: _viewerPosterProfile,
+                    searchController: _searchController,
+                    searchFocusNode: _searchFocusNode,
+                    onSearchChanged: (_) {},
+                    onSearchSubmitted: _openWebsiteSearch,
+                    compact: useCompactLandscapeHome,
+                  ),
+                ),
+                _HomePinnedFeedControls(
+                  categories: categories,
+                  activeCategorySlug: activeCategorySlug,
+                  scrollController: _categoryScrollController,
+                  onCategoryTap: _selectCategory,
+                  banners: _homeBanners,
+                  onBannerViewed: _recordHomeBannerView,
+                  showAdFallback: _adFallbackSlotEnabled,
+                  shouldShowAdFallback: _shouldShowHomeBannerAdFallback(
+                    effectiveEntitlement,
+                  ),
+                  homeRefreshing: _homeRefreshing,
                   compact: useCompactLandscapeHome,
                 ),
-              ),
-              _HomePinnedFeedControls(
-                categories: categories,
-                activeCategorySlug: activeCategorySlug,
-                scrollController: _categoryScrollController,
-                onCategoryTap: _selectCategory,
-                banners: _homeBanners,
-                onBannerViewed: _recordHomeBannerView,
-                showAdFallback: _adFallbackSlotEnabled,
-                shouldShowAdFallback: _shouldShowHomeBannerAdFallback(
-                  effectiveEntitlement,
-                ),
-                homeRefreshing: _homeRefreshing,
-                compact: useCompactLandscapeHome,
-              ),
-              Expanded(
-                child: hidePosterFeed || loadingSelectedCategory
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: _PosterFeedSkeletonViewport(),
-                      )
-                    : templates.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _EmptyPosterGameState(
-                          key: ValueKey<String>(
-                            'empty-poster-game-$activeCategorySlug',
+                Expanded(
+                  child: hidePosterFeed || loadingSelectedCategory
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: _PosterFeedSkeletonViewport(),
+                        )
+                      : templates.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _EmptyPosterGameState(
+                            key: ValueKey<String>(
+                              'empty-poster-game-$activeCategorySlug',
+                            ),
+                            icon: Icons.collections_outlined,
+                            title: strings.homeEmptyPostersTitle,
+                            subtitle: strings.homeEmptyPostersSubtitle,
+                            categorySlug: selectedCategory.slug,
+                            categoryLabel: selectedCategory.label,
                           ),
-                          icon: Icons.collections_outlined,
-                          title: strings.homeEmptyPostersTitle,
-                          subtitle: strings.homeEmptyPostersSubtitle,
-                          categorySlug: selectedCategory.slug,
-                          categoryLabel: selectedCategory.label,
-                        ),
-                      )
-                    : ValueListenableBuilder<int>(
-                        valueListenable: _activePosterPageNotifier,
-                        builder: (context, activePosterPage, _) {
-                          final activeFeedPage = feedEntries.isEmpty
-                              ? 0
-                              : math.min(
-                                  activePosterPage,
-                                  feedEntries.length - 1,
-                                );
-                          if (feedEntries.isNotEmpty) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                _handlePosterPageChanged(
-                                  activeFeedPage,
-                                  feedEntries,
-                                );
-                              }
-                            });
-                          }
-                          return PageView.builder(
-                            controller: _posterPageController,
-                            scrollDirection: Axis.vertical,
-                            allowImplicitScrolling: true,
-                            physics: _posterPhotoDragInProgress
-                                ? const NeverScrollableScrollPhysics()
-                                : const PageScrollPhysics(
-                                    parent: BouncingScrollPhysics(),
-                                  ),
-                            onPageChanged: (index) =>
-                                _handlePosterPageChanged(index, feedEntries),
-                            itemCount:
-                                feedEntries.length +
-                                (_templatesLoadingMore ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index >= feedEntries.length) {
-                                return const Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
+                        )
+                      : NotificationListener<
+                          ScrollStartNotification
+                        >(
+                              onNotification: (notification) {
+                                if (notification.depth == 0 &&
+                                    notification.dragDetails != null) {
+                                  _lockVisibleAllFeedOrder(feedEntries);
+                                }
+                                return false;
+                              },
+                              child: PageView.builder(
+                                controller: _posterPageController,
+                                scrollDirection: Axis.vertical,
+                                allowImplicitScrolling: false,
+                                physics: _posterPhotoDragInProgress
+                                    ? const NeverScrollableScrollPhysics()
+                                    : const PageScrollPhysics(
+                                        parent: BouncingScrollPhysics(),
+                                      ),
+                                onPageChanged: (index) =>
+                                    _handlePosterPageChanged(
+                                      index,
+                                      feedEntries,
                                     ),
-                                  ),
-                                );
-                              }
-                              final entry = feedEntries[index];
-                              if (entry.isPromo) {
-                                final promo = entry.promo!;
-                                final cardSlides = promo.slides.isNotEmpty
-                                    ? promo.slides
-                                    : fallbackPromoSlides;
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    10,
-                                    16,
-                                    18,
-                                  ),
-                                  child: Center(
-                                    child: _HomeInlinePromoCard(
-                                      data: promo,
-                                      viewerPosterProfile: _viewerPosterProfile,
-                                      slides: cardSlides,
-                                      onTap: (ctaTarget) => unawaited(
-                                        _handlePromoTap(
-                                          promo.type,
-                                          ctaTarget: ctaTarget,
+                                itemCount:
+                                    feedEntries.length +
+                                    (_templatesLoadingMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index >= feedEntries.length) {
+                                    return const Center(
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
                                         ),
                                       ),
+                                    );
+                                  }
+                                  final entry = feedEntries[index];
+                                  if (entry.isPromo) {
+                                    final promo = entry.promo!;
+                                    final cardSlides = promo.slides.isNotEmpty
+                                        ? promo.slides
+                                        : fallbackPromoSlides;
+                                    return Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        10,
+                                        16,
+                                        18,
+                                      ),
+                                      child: Center(
+                                        child: _HomeInlinePromoCard(
+                                          data: promo,
+                                          viewerPosterProfile:
+                                              _viewerPosterProfile,
+                                          slides: cardSlides,
+                                          onTap: (ctaTarget) => unawaited(
+                                            _handlePromoTap(
+                                              promo.type,
+                                              ctaTarget: ctaTarget,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final item = entry.template!;
+                                  return ValueListenableBuilder<int>(
+                                    valueListenable: _activePosterPageNotifier,
+                                    builder: (context, activePosterPage, _) {
+                                      final isActivePoster =
+                                          index == activePosterPage;
+                                      final keepRichPosterPreview = isActivePoster;
+                                      return _TemplateFeedItem(
+                                    key: ValueKey<String>(
+                                      item.templateId?.trim().isNotEmpty == true
+                                          ? item.templateId!.trim()
+                                          : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
                                     ),
-                                  ),
-                                );
-                              }
-                              final item = entry.template!;
-                              final isActivePoster = index == activeFeedPage;
-                              final keepRichPosterPreview =
-                                  (index - activeFeedPage).abs() <= 1;
-                              return _TemplateFeedItem(
-                                key: ValueKey<String>(
-                                  item.templateId?.trim().isNotEmpty == true
-                                      ? item.templateId!.trim()
-                                      : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
-                                ),
-                                item: item,
-                                hostContext: context,
-                                language: language,
-                                preferUltraLightImage: !isActivePoster,
-                                deferRichPosterPreview: !keepRichPosterPreview,
-                                fillViewport: true,
-                                playbackEnabled: isActivePoster,
-                                enablePoliticalProtocolOverlay:
-                                    selectedCategory.slug ==
-                                        _politicalCategorySlug ||
-                                    _partyIdFromCategorySlug(
+                                    item: item,
+                                    hostContext: context,
+                                    language: language,
+                                    preferUltraLightImage: !isActivePoster,
+                                    deferRichPosterPreview:
+                                        !keepRichPosterPreview,
+                                    fillViewport: true,
+                                    playbackEnabled: isActivePoster,
+                                    enablePoliticalProtocolOverlay:
+                                        selectedCategory.slug ==
+                                            _politicalCategorySlug ||
+                                        _partyIdFromCategorySlug(
+                                              selectedCategory.slug,
+                                            ) !=
+                                            null,
+                                    showPartyLogoInNameChip:
+                                        _partyIdFromCategorySlug(
                                           selectedCategory.slug,
                                         ) !=
                                         null,
-                                showPartyLogoInNameChip:
-                                    _partyIdFromCategorySlug(
-                                      selectedCategory.slug,
-                                    ) !=
-                                    null,
-                                politicalProtocolPhotoScopeKey: _normalizeTag(
-                                  selectedCategory.slug,
-                                ),
-                                partyLogoOverridesByPartyId:
-                                    _partyLogoOverridesByPartyId,
-                                politicalParties: _politicalParties,
-                                forcedPoliticalProtocolPartyId:
-                                    _partyIdFromCategorySlug(
-                                      selectedCategory.slug,
-                                    ),
-                                onOpenSubscriptionPlan:
-                                    _pushSubscriptionPlanRoute,
-                                viewerPosterProfile: _viewerPosterProfile,
-                                posterRenderCycle: _posterRenderCycle,
-                                onPosterPhotoDragStateChanged:
-                                    _setPosterPhotoDragInProgress,
-                                onPreviewTap: () =>
-                                    _openFullScreenPosterGallery(
-                                      feedIndex: index,
-                                      feedEntries: feedEntries,
-                                      selectedCategory: selectedCategory,
-                                      language: language,
-                                    ),
-                                onInteraction:
-                                    _recordAllFeedTemplateInteraction,
-                              );
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-          if (_activeFullscreenPopupBanner != null &&
-              !_fullscreenPopupDismissed)
-            _HomeFullscreenPopupBanner(
-              banner: _activeFullscreenPopupBanner!,
-              onClose: _dismissFullscreenPopupBanner,
-              onViewed: _recordFullscreenPopupBannerView,
+                                    politicalProtocolPhotoScopeKey:
+                                        _normalizeTag(selectedCategory.slug),
+                                    partyLogoOverridesByPartyId:
+                                        _partyLogoOverridesByPartyId,
+                                    politicalParties: _politicalParties,
+                                    forcedPoliticalProtocolPartyId:
+                                        _partyIdFromCategorySlug(
+                                          selectedCategory.slug,
+                                        ),
+                                    onOpenSubscriptionPlan:
+                                        _pushSubscriptionPlanRoute,
+                                    viewerPosterProfile: _viewerPosterProfile,
+                                    posterRenderCycle: _posterRenderCycle,
+                                    onPosterPhotoDragStateChanged:
+                                        _setPosterPhotoDragInProgress,
+                                    onPreviewTap: () =>
+                                        _openFullScreenPosterGallery(
+                                          feedIndex: index,
+                                          feedEntries: feedEntries,
+                                          selectedCategory: selectedCategory,
+                                          language: language,
+                                        ),
+                                    onInteraction:
+                                        _recordAllFeedTemplateInteraction,
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                ),
+              ],
             ),
-        ],
+            if (showFullscreenPopup)
+              HomeFullscreenPopupBanner(
+                banner: _activeFullscreenPopupBanner!,
+                imageProvider: _fullscreenPopupImageProvider!,
+                onClose: _dismissFullscreenPopupBanner,
+                onViewed: _recordFullscreenPopupBannerView,
+                onTap: _activeFullscreenPopupBanner!.ctaTarget.trim().isEmpty
+                    ? null
+                    : () => unawaited(_openFullscreenPopupTarget()),
+              ),
+          ],
+        ),
       ),
     );
   }

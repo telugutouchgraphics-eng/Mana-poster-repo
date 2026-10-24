@@ -17,6 +17,13 @@ analyzer:
     # Local restore snapshots are reference-only and can contain stale code.
     - backup_full_stable_restore_20260722_123821/**
     - backup_home_revert_20260722_121417/**
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   # The lint rules applied to this project can be customized in the

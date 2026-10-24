@@ -1219,6 +1219,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   void _schedulePosterWarmup({bool force = false}) {
+    // Capture exports on demand; eager rasterization competes with feed scrolling.
+    if (!item.isVideo || widget.previewOnly || !playbackEnabled) return;
     if (item.isVideo && playbackEnabled) {
       _scheduleVideoWarmup();
       return;
@@ -2246,6 +2248,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     bool enableFullScreenTap = true,
     bool personalizationEnabled = true,
   }) {
+    // Apply the same jokes policy to home, gallery, preview and exports.
+    personalizationEnabled = personalizationEnabled && !_isCurrentJokesPoster();
     final sourcePersonalizationConfig = item.personalizationConfig;
     final personalizationConfig =
         personalizationEnabled || sourcePersonalizationConfig == null
@@ -2450,14 +2454,21 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             ],
           )
         : framedPreview;
+    final semanticCaptureContent = Semantics(
+      image: true,
+      label: item.titleTe.isNotEmpty
+          ? item.titleTe
+          : (item.titleEn.isNotEmpty ? item.titleEn : 'Poster'),
+      child: ExcludeSemantics(child: captureContent),
+    );
     if (deferRichPosterPreview) {
-      return KeyedSubtree(key: _posterCaptureKey, child: captureContent);
+      return KeyedSubtree(key: _posterCaptureKey, child: semanticCaptureContent);
     }
     return KeyedSubtree(
       key: _posterCaptureKey,
       child: Screenshot(
         controller: _posterScreenshotController,
-        child: captureContent,
+        child: semanticCaptureContent,
       ),
     );
   }

@@ -6,6 +6,8 @@ const {logger} = require("firebase-functions");
 const crypto = require("crypto");
 const fs = require("fs");
 const {google} = require("googleapis");
+const {subscriptionInvoiceSnapshot} = require("./subscription_invoice");
+const {collectPublishedCategoryPosters, collectPublishedPosterDocuments, isGoodNightPosterReleased} = require("./poster_category_presence");
 const path = require("path");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
@@ -27,7 +29,7 @@ const subscriptionPlanConfig = {
   primaryMonthlyProductId: "mana_poster_premium_monthly_149",
   trialDays: 3,
   trialPrice: 4,
-  monthlyPrice: 149,
+  monthlyPrice: 99,
   yearlyPrice: 699,
 };
 const editorSubscriptionPlanConfig = {
@@ -162,6 +164,30 @@ async function getAndroidPublisherClient() {
     })();
   }
   return androidPublisherClientPromise;
+}
+
+async function fetchSubscriptionInvoiceSnapshot(verification, purchaseToken) {
+  const orderId = verification.latestOrderId;
+  if (!orderId) return {};
+  try {
+    const publisher = await getAndroidPublisherClient();
+    // The installed discovery client predates orders.get; use its authenticated client.
+    const response = await publisher.context._options.auth.request({
+      url: `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(playPackageName)}/orders/${encodeURIComponent(orderId)}`,
+      method: "GET",
+      timeout: 5000,
+      retry: false,
+    });
+    return subscriptionInvoiceSnapshot(response.data, {
+      orderId,
+      purchaseToken,
+      productId: verification.primaryProductId,
+    });
+  } catch (error) {
+    // Missing order access must never stop entitlement verification or acknowledgement.
+    logger.warn("Subscription invoice amount unavailable", {code: error?.code || null});
+    return {};
+  }
 }
 
 function isActiveSubscriptionState(state) {
@@ -1740,13 +1766,33 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "སང་ཉིན" : "དེ་རིང"} ཡོད། པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
     },
   };
+  const LOCALIZED_SHARE_FOOTER = {
+    telugu: "ఇప్పుడే షేర్ చేయండి",
+    hindi: "अभी शेयर करें",
+    english: "Share now",
+    tamil: "இப்போது பகிருங்கள்",
+    kannada: "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ",
+    malayalam: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ",
+    marathi: "आत्ताच शेअर करा",
+    gujarati: "હમણાં શેર કરો",
+    bengali: "এখনই শেয়ার করুন",
+    punjabi: "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ",
+    odia: "ଏବେ ଶେୟାର କରନ୍ତୁ",
+    assamese: "এতিয়াই শ্বেয়াৰ কৰক",
+    konkani: "आतां शेअर करात",
+    nepali: "अहिले शेयर गर्नुहोस्",
+    meitei: "Houjik share tou",
+    mizo: "Tunah share rawh",
+    kashmiri: "وُنہ شیئر کریو",
+    ladakhi: "Da share chos",
+  };
   const bucket = map[lang] || map.english;
   const pair = bucket[kind] || bucket.welcome;
   return cleanFallbackNotificationAddress({
     title: pair[0],
     body: pair[1],
-    header: pair[1],
-    footer: bucket === map.telugu ? "ఇప్పుడే షేర్ చేయండి" : "Share now",
+    header: pair[0],
+    footer: LOCALIZED_SHARE_FOOTER[lang] || LOCALIZED_SHARE_FOOTER.english,
   }, userName);
 }
 
@@ -1870,7 +1916,7 @@ function buildReligionNotificationCopy(language, userName, targetReligion) {
   return cleanFallbackNotificationAddress({
     title: bucket.title,
     body,
-    header: body,
+    header: bucket.title,
     footer: bucket.footer,
   }, userName);
 }
@@ -2398,6 +2444,50 @@ const hindiSharedContentRegionIds = [
   "delhi",
   "andaman_nicobar",
 ];
+
+const ALL_APP_REGIONS = [
+  {id: "andhra_pradesh", lang: "telugu", langCode: "te"},
+  {id: "telangana", lang: "telugu", langCode: "te"},
+  {id: "bihar", lang: "hindi", langCode: "hi"},
+  {id: "chhattisgarh", lang: "hindi", langCode: "hi"},
+  {id: "haryana", lang: "hindi", langCode: "hi"},
+  {id: "himachal_pradesh", lang: "hindi", langCode: "hi"},
+  {id: "jharkhand", lang: "hindi", langCode: "hi"},
+  {id: "madhya_pradesh", lang: "hindi", langCode: "hi"},
+  {id: "rajasthan", lang: "hindi", langCode: "hi"},
+  {id: "uttar_pradesh", lang: "hindi", langCode: "hi"},
+  {id: "uttarakhand", lang: "hindi", langCode: "hi"},
+  {id: "delhi", lang: "hindi", langCode: "hi"},
+  {id: "andaman_nicobar", lang: "hindi", langCode: "hi"},
+  {id: "tamil_nadu", lang: "tamil", langCode: "ta"},
+  {id: "puducherry", lang: "tamil", langCode: "ta"},
+  {id: "karnataka", lang: "kannada", langCode: "kn"},
+  {id: "kerala", lang: "malayalam", langCode: "ml"},
+  {id: "lakshadweep", lang: "malayalam", langCode: "ml"},
+  {id: "maharashtra", lang: "marathi", langCode: "mr"},
+  {id: "gujarat", lang: "gujarati", langCode: "gu"},
+  {id: "dadra_nagar_haveli_daman_diu", lang: "gujarati", langCode: "gu"},
+  {id: "west_bengal", lang: "bengali", langCode: "bn"},
+  {id: "tripura", lang: "bengali", langCode: "bn"},
+  {id: "punjab", lang: "punjabi", langCode: "pa"},
+  {id: "chandigarh", lang: "punjabi", langCode: "pa"},
+  {id: "odisha", lang: "odia", langCode: "or"},
+  {id: "assam", lang: "assamese", langCode: "as"},
+  {id: "goa", lang: "konkani", langCode: "kok"},
+  {id: "sikkim", lang: "nepali", langCode: "ne"},
+  {id: "manipur", lang: "meitei", langCode: "mni"},
+  {id: "mizoram", lang: "mizo", langCode: "lus"},
+  {id: "jammu_kashmir", lang: "kashmiri", langCode: "ks"},
+  {id: "ladakh", lang: "ladakhi", langCode: "lbj"},
+  {id: "arunachal_pradesh", lang: "english", langCode: "en"},
+  {id: "meghalaya", lang: "english", langCode: "en"},
+  {id: "nagaland", lang: "english", langCode: "en"},
+];
+
+function regionInfoForId(regionId) {
+  const norm = normalizeRegionId(regionId);
+  return ALL_APP_REGIONS.find((r) => r.id === norm) || {id: norm, lang: "english", langCode: "en"};
+}
 
 function isPoliticalCategoryId(categoryId) {
   return normalizeRegionId(categoryId).startsWith("party_");
@@ -3576,6 +3666,7 @@ async function sendReminderToToken({
 
 async function sendReminderToTopic({
   topic,
+  condition,
   title,
   body,
   imageUrl = null,
@@ -3591,7 +3682,8 @@ async function sendReminderToTopic({
   extraData = {},
 }) {
   const normalizedTopic = String(topic || "").trim();
-  if (!normalizedTopic) {
+  const normalizedCondition = String(condition || "").trim();
+  if (!normalizedTopic && !normalizedCondition) {
     return null;
   }
   const normalizedTitle = String(title || "").trim();
@@ -3601,7 +3693,7 @@ async function sendReminderToTopic({
       notificationOpenRoute(categoryKey, openKind);
   const normalizedCategory = reminderCategoryKey(categoryKey);
   const message = {
-    topic: normalizedTopic,
+    ...(normalizedCondition ? {condition: normalizedCondition} : {topic: normalizedTopic}),
     android: {
       priority: "high",
     },
@@ -3947,6 +4039,10 @@ async function getTieredPosterImagesForReminderCategory(categoryKey, regionId = 
       const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl || !posterIsCurrentlyVisible(data, nowMillis)) {
+        continue;
+      }
+      const posterRegionId = normalizeRegionId(data.regionId);
+      if (posterRegionId && !lookupRegionIds.includes(posterRegionId)) {
         continue;
       }
       const matched = aliases.some((alias) =>
@@ -4356,301 +4452,110 @@ async function sendDailyPersonalizedReminder({
 
   let deliveredCount = 0;
   let failedCount = 0;
-  let broadcastCopy = null;
-  let broadcastImageUrl = "";
+  let skippedCount = 0;
+  let primaryCopy = null;
+  let primaryImage = "";
 
-  // 1. Broadcast via FCM Topic to 100% of devices with ZERO document limits and ZERO cost
-  try {
-    const resolvedTopic = String(targetTopic || "").trim() ||
-        (targetReligion ? `religion_${targetReligion}` : "all_users");
-    broadcastImageUrl = await imageForRegion("andhra_pradesh") || await imageForRegion("") || "";
-    if (!broadcastImageUrl) {
-      logger.warn("sendDailyPersonalizedReminder skipped: no poster image", {
-        categoryKey,
-        topic: resolvedTopic,
-      });
-      await recordAutomatedPushNotificationHistory({
-        title: `${categoryKey} reminder`,
-        message: "Skipped because no approved poster image was available.",
-        titleKey: `${categoryKey}_title`,
-        bodyKey: `${categoryKey}_body`,
-        imageUrl: "",
-        category: categoryKey,
-        audience: "all_users",
-        targetReligion: targetReligion || "all",
-        status: "failed",
-        deliveredCount: 0,
-        failedCount: 1,
-        targetCount: 1,
-        errorMessage: "No approved poster image available",
-      });
-      return;
-    }
-    broadcastCopy = categorySpecificReminderCopy(categoryKey, "te", "") ||
-        (targetReligion && targetReligion !== "all" ?
-          buildReligionNotificationCopy("te", "", targetReligion) :
-          reminderCopyLocalized(categoryKey, "te", "", now));
-
-    await sendReminderToTopic({
-      topic: resolvedTopic,
-      title: broadcastCopy.title,
-      body: broadcastCopy.body,
-      imageUrl: broadcastImageUrl || null,
-      posterBaseImageUrl: broadcastImageUrl || "",
-      headerText: broadcastCopy.header || "",
-      footerText: broadcastCopy.footer || "",
-      categoryKey,
-      titleKey: `${categoryKey}_title`,
-      bodyKey: `${categoryKey}_body`,
-      languageCode: "te",
-    });
-    deliveredCount++;
-    logger.info("sendDailyPersonalizedReminder topic broadcast complete", {
-      topic: resolvedTopic,
-      categoryKey,
-      hasImage: Boolean(broadcastImageUrl),
-    });
-  } catch (topicError) {
-    failedCount++;
-    logger.error("sendDailyPersonalizedReminder topic broadcast error", {
-      categoryKey,
-      error: topicError,
-    });
-  }
-
-  // 2. Prevent duplicate notifications: If topic broadcast succeeded, 100% of devices already received
-  // the notification! Only fall back to individual token looping if topic broadcast failed.
-  if (deliveredCount === 0) {
-    const userTokenSnap = await db
-        .collectionGroup("deviceTokens")
-        .limit(notificationTokenScanLimit)
-        .get();
-    for (const doc of userTokenSnap.docs) {
-    const data = doc.data() || {};
-    const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token) ||
-        !tokenAllowsCategory(data, categoryKey)) {
-      continue;
-    }
-    const userRef = doc.ref.parent && doc.ref.parent.parent;
-    const uid = userRef ? userRef.id : "";
-    seenTokens.add(token);
-    userJobs.push({
-      token,
-      uid,
-      ref: doc.ref,
-      platform: String(data.platform || "").trim(),
-      language: notificationLanguageFromTokenData(data),
-      regionId: notificationRegionFromData(data),
-      religionPreference: tokenReligionFromData(data),
-    });
-  }
-
-  await runWithConcurrency(userJobs, 12, async ({
-    token,
-    uid,
-    ref,
-    platform,
-    language,
-    regionId,
-    religionPreference,
-  }) => {
-    let profile = profileCache.get(uid);
-    if (!profile) {
-      profile = await loadNotificationProfileForUid(uid);
-      profileCache.set(uid, profile);
-    }
+  // 1. Partitioned Regional & Religion FCM Broadcast:
+  // ZERO document reads, ZERO billing cost, 100% state & religion isolation.
+  // Each state receives ONLY its own approved posters and localized language text.
+  // When targetReligion is specified, devices must match BOTH religion AND region.
+  const regionJobs = ALL_APP_REGIONS.map(async (regionConfig) => {
     try {
-      if (targetReligion) {
-        const tokenReligion = normalizeReligionPreference(religionPreference);
-        const profileReligion = normalizeReligionPreference(profile.religionPreference);
-        if (tokenReligion !== targetReligion && profileReligion !== targetReligion) {
-          return;
-        }
-      }
-      const resolvedRegionId = normalizeRegionId(regionId || profile.selectedRegion);
-      const imageUrl = await imageForRegion(resolvedRegionId);
-      if (!imageUrl) {
-        logger.info("personalized daily reminder skipped: no poster", {
-          uid,
-          categoryKey,
-          regionId: resolvedRegionId,
-        });
+      const regionImage = await imageForRegion(regionConfig.id);
+      // STRICT MISMATCH PREVENTION: If no approved poster exists for this state, SKIP IT.
+      // Never send another state's image!
+      if (!regionImage) {
+        skippedCount++;
         return;
       }
-      const reservation = await reserveNotificationDelivery({
-        token,
-        categoryKey,
-        slotKey: `${categoryKey}-${resolvedSeed}`,
-        dayKey,
-      });
-      if (!reservation.allowed) {
-        logger.info("personalized daily reminder skipped by frequency guard", {
-          uid,
-          categoryKey,
-          reason: reservation.reason,
-        });
+
+      const lang = regionConfig.lang;
+      const langCode = regionConfig.langCode;
+      let copy = null;
+      let targetTarget = null;
+      let targetCondition = null;
+
+      if (targetReligion && targetReligion !== "all") {
+        copy = categorySpecificReminderCopy(categoryKey, lang, "") ||
+            buildReligionNotificationCopy(lang, "", targetReligion);
+        targetCondition = `'religion_${targetReligion}' in topics && 'region_${regionConfig.id}' in topics`;
+      } else if (targetReligion === "all") {
+        copy = categorySpecificReminderCopy(categoryKey, lang, "") ||
+            buildReligionNotificationCopy(lang, "", "all");
+        targetCondition = `'religion_all' in topics && 'region_${regionConfig.id}' in topics`;
+      } else if (targetTopic) {
+        copy = reminderCopyLocalized(categoryKey, lang, "", now);
+        targetTarget = targetTopic;
+      } else {
+        copy = reminderCopyLocalized(categoryKey, lang, "", now);
+        targetTarget = `region_${regionConfig.id}`;
+      }
+
+      if (!copy || !copy.title || !copy.body) {
+        skippedCount++;
         return;
       }
-      const copy =
-        categorySpecificReminderCopy(
-            categoryKey,
-            language || profile.preferredLanguage,
-            profile.name,
-        ) ||
-        (targetReligion ?
-          buildReligionNotificationCopy(
-              language || profile.preferredLanguage,
-              profile.name,
-              targetReligion,
-          ) :
-          reminderCopyLocalized(
-              categoryKey,
-              language || profile.preferredLanguage,
-              profile.name,
-              now,
-          ));
-      await sendReminderToToken({
-        token,
-        platform,
+
+      if (!primaryCopy) {
+        primaryCopy = copy;
+        primaryImage = regionImage;
+      }
+
+      await sendReminderToTopic({
+        topic: targetTarget,
+        condition: targetCondition,
         title: copy.title,
         body: copy.body,
-        imageUrl: imageUrl || null,
-        posterBaseImageUrl: imageUrl || "",
+        imageUrl: regionImage,
+        posterBaseImageUrl: regionImage,
         headerText: copy.header || "",
         footerText: copy.footer || "",
         categoryKey,
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
-        userName: profile.name || "",
-        userPhotoUrl: profile.photoUrl || "",
-        languageCode: language || profile.preferredLanguage || "",
+        languageCode: langCode,
       });
       deliveredCount++;
-    } catch (error) {
+    } catch (err) {
       failedCount++;
-      if (isMessagingTokenGoneError(error)) {
-        await cleanupInvalidTokenRef(ref);
-      }
-      logger.error("personalized daily reminder failed", {
-        uid,
-        token,
+      logger.error("sendDailyPersonalizedReminder regional delivery error", {
+        regionId: regionConfig.id,
         categoryKey,
-        error: messagingErrorDetails(error),
+        targetReligion,
+        error: err,
       });
     }
   });
 
-  const publicSnap = await db
-      .collection("publicDeviceTokens")
-      .limit(publicNotificationTokenScanLimit)
-      .get();
-  const publicJobs = [];
-  for (const doc of publicSnap.docs) {
-    const data = doc.data() || {};
-    const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token) ||
-        !tokenAllowsCategory(data, categoryKey) ||
-        !tokenAllowsReligion(data, targetReligion)) {
-      continue;
-    }
-    seenTokens.add(token);
-    publicJobs.push({
-      token,
-      ref: doc.ref,
-      platform: String(data.platform || "").trim(),
-      language: notificationLanguageFromTokenData(data),
-      regionId: notificationRegionFromData(data),
-    });
-  }
+  await Promise.all(regionJobs);
 
-  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language, regionId}) => {
-    try {
-      const resolvedRegionId = normalizeRegionId(regionId);
-      const imageUrl = await imageForRegion(resolvedRegionId);
-      if (!imageUrl) {
-        logger.info("public daily reminder skipped: no poster", {
-          tokenSuffix: String(token || "").slice(-12),
-          categoryKey,
-          regionId: resolvedRegionId,
-        });
-        return;
-      }
-      const reservation = await reserveNotificationDelivery({
-        token,
-        categoryKey,
-        slotKey: `${categoryKey}-${resolvedSeed}`,
-        dayKey,
-      });
-      if (!reservation.allowed) {
-        logger.info("public daily reminder skipped by frequency guard", {
-          tokenSuffix: String(token || "").slice(-12),
-          categoryKey,
-          reason: reservation.reason,
-        });
-        return;
-      }
-      const copy =
-        categorySpecificReminderCopy(categoryKey, language, "") ||
-        (targetReligion ?
-          buildReligionNotificationCopy(
-              language,
-              "",
-              targetReligion,
-          ) :
-          reminderCopyLocalized(
-              categoryKey,
-              language,
-              "",
-              now,
-          ));
-      await sendReminderToToken({
-        token,
-        platform,
-        title: copy.title,
-        body: copy.body,
-        imageUrl: imageUrl || null,
-        posterBaseImageUrl: imageUrl || "",
-        headerText: copy.header || "",
-        footerText: copy.footer || "",
-        categoryKey,
-        titleKey: `${categoryKey}_title`,
-        bodyKey: `${categoryKey}_body`,
-        userName: "",
-        languageCode: language,
-      });
-      deliveredCount++;
-    } catch (error) {
-      failedCount++;
-      if (isMessagingTokenGoneError(error)) {
-        await cleanupInvalidTokenRef(ref);
-      }
-      logger.error("public daily reminder failed", {
-        token,
-        categoryKey,
-        error: messagingErrorDetails(error),
-      });
-    }
+  logger.info("sendDailyPersonalizedReminder regional broadcast finished", {
+    categoryKey,
+    targetReligion,
+    deliveredCount,
+    skippedCount,
+    failedCount,
   });
-  }
 
-  if (broadcastCopy) {
-    await recordAutomatedPushNotificationHistory({
-      title: broadcastCopy.title,
-      message: broadcastCopy.body,
-      titleKey: `${categoryKey}_title`,
-      bodyKey: `${categoryKey}_body`,
-      imageUrl: broadcastImageUrl || "",
-      category: categoryKey,
-      audience: "all_users",
-      targetReligion: targetReligion || "all",
-      status: deliveredCount > 0 ? "sent" : "failed",
-      deliveredCount,
-      failedCount,
-      targetCount: deliveredCount + failedCount,
-    });
-  }
+  await recordAutomatedPushNotificationHistory({
+    title: (primaryCopy && primaryCopy.title) || `${displayLabel || categoryKey} reminder`,
+    message: (primaryCopy && primaryCopy.body) || `${categoryKey} delivered across regions with localized content.`,
+    titleKey: `${categoryKey}_title`,
+    bodyKey: `${categoryKey}_body`,
+    imageUrl: primaryImage || "",
+    category: categoryKey,
+    audience: targetReligion ? `religion_${targetReligion}` : (targetTopic || "all_regions"),
+    targetReligion: targetReligion || "all",
+    status: deliveredCount > 0 ? "sent" : (skippedCount > 0 ? "skipped_no_posters" : "failed"),
+    deliveredCount,
+    failedCount,
+    targetCount: ALL_APP_REGIONS.length,
+    errorMessage: failedCount > 0 ? `${failedCount} regional broadcasts failed` : "",
+  });
+
 }
+
 
 async function sendDirectReminderToEligibleTokens({
   categoryKey,
@@ -4720,6 +4625,8 @@ async function sendDirectReminderToEligibleTokens({
         eventTopic,
       });
     } else {
+      const topicRegion = eventTopic.startsWith("region_") ? eventTopic.replace(/^region_/, "") : "";
+      const regionInfo = regionInfoForId(topicRegion);
       await sendReminderToTopic({
         topic: eventTopic,
         title,
@@ -4728,7 +4635,7 @@ async function sendDirectReminderToEligibleTokens({
         categoryKey: categoryKey || "dynamic_event",
         titleKey: "dynamic_event_title",
         bodyKey: "dynamic_event_body",
-        languageCode: "te",
+        languageCode: regionInfo.langCode,
       });
       deliveredCount++;
     }
@@ -5423,6 +5330,7 @@ async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
   const lookupRegionIds = sharedContentRegionIdsFor(regionId || "telangana", normalizedCategoryId);
   const seen = new Set();
   const docs = [];
+  const nowMillis = Date.now();
   const baseQuery = db.collection("creatorPosters").where("status", "==", "approved");
   if (normalizedCategoryId) {
     const categoryCandidates = Array.from(new Set([
@@ -5431,13 +5339,20 @@ async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
     ].filter((candidate) => candidate)));
     for (const lookupRegionId of lookupRegionIds) {
       for (const candidate of categoryCandidates) {
-        const snap = await baseQuery
+        const publishedDocs = await collectPublishedPosterDocuments({
+          query: baseQuery
             .where("regionId", "==", lookupRegionId)
             .where("categoryId", "==", candidate)
-            .orderBy("createdAt", "desc")
-            .limit(safeLimit)
-            .get();
-        for (const doc of snap.docs) {
+            .orderBy("createdAt", "desc"),
+          isVisible: (data) => posterIsCurrentlyVisible(data, nowMillis) &&
+            isGoodNightPosterReleased({...data, publishAt: toMillis(data.publishAt), createdAt: toMillis(data.createdAt)}, nowMillis),
+          isRenderable: (doc) => {
+            const item = serializeApprovedCreatorPoster(doc);
+            return !!((item.mediaType === "video" && item.videoUrl) || item.imageUrl || item.imagePath || item.thumbnailUrl || item.thumbnailPath);
+          },
+          limit: safeLimit,
+        });
+        for (const doc of publishedDocs) {
           if (!seen.has(doc.id)) {
             seen.add(doc.id);
             docs.push(doc);
@@ -5457,7 +5372,6 @@ async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
       }
     }
   }
-  const nowMillis = Date.now();
   return docs
       .filter((doc) => posterIsCurrentlyVisible(doc.data(), nowMillis))
       .sort((left, right) => posterVisibleFromMillis(right.data()) - posterVisibleFromMillis(left.data()))
@@ -5483,6 +5397,24 @@ exports.appCreatorPostersFeed = onRequest(
   }
   try {
     const body = req.body && typeof req.body === "object" ? req.body : {};
+    if (body.categoryPresence === true) {
+      const regionId = normalizeRegionId(body.regionId || "telangana");
+      const query = applyRegionScope(
+          db.collection("creatorPosters").where("status", "==", "approved"),
+          sharedContentRegionIdsFor(regionId),
+      ).orderBy("createdAt", "desc");
+      const nowMillis = Date.now();
+      const posters = await collectPublishedCategoryPosters({
+        query,
+        isVisible: (data) => posterIsCurrentlyVisible(data, nowMillis) &&
+          isGoodNightPosterReleased({...data, publishAt: toMillis(data.publishAt), createdAt: toMillis(data.createdAt)}, nowMillis) &&
+          (!isPoliticalCategoryId(data.categoryId) || normalizeRegionId(data.regionId) === regionId),
+        serialize: serializeApprovedCreatorPoster,
+      });
+      res.set("Cache-Control", "no-store");
+      res.status(200).json({ok: true, complete: true, posters});
+      return;
+    }
     const posters = await queryApprovedCreatorPosters({
       regionId: normalizeRegionId(body.regionId || "telangana"),
       categoryId: normalizeRegionId(body.categoryId || ""),
@@ -6813,6 +6745,8 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       expiryTime: verification.expiryTime,
     });
 
+    const invoiceSnapshot = await fetchSubscriptionInvoiceSnapshot(verification, token);
+
     await db.runTransaction(async (tx) => {
       tx.set(
         entitlementRef,
@@ -6840,6 +6774,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
 
       tx.set(eventRef, {
         type: "verify",
+        ...invoiceSnapshot,
         isPro: isValid,
         appAccess: access.appAccess,
         editorAccess: access.editorAccess,
@@ -7169,6 +7104,7 @@ async function syncSubscriptionEntitlementFromToken({
   });
   await db.collection(`users/${uid}/purchaseEvents`).add({
     type: "subscription_sync",
+    ...await fetchSubscriptionInvoiceSnapshot(verification, purchaseToken),
     trigger,
     isPro,
     appAccess: access.appAccess,
@@ -7435,9 +7371,9 @@ exports.reminderToolSendTriple = onRequest(
 exports.processWelcomeNotifications = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 15 minutes",
+      schedule: "0 11 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
+      memory: "256MiB",
       timeoutSeconds: 180,
     },
     async () => {
@@ -7509,8 +7445,8 @@ exports.dailyGoodMorningReminder0700 = onSchedule(
       region: "asia-south1",
       schedule: "0 7 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7530,8 +7466,8 @@ exports.dailyMotivationReminder1030 = onSchedule(
       region: "asia-south1",
       schedule: "0 10 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7553,8 +7489,8 @@ exports.dailyGoodAfternoonReminder1200 = onSchedule(
       region: "asia-south1",
       schedule: "0 12 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7574,8 +7510,8 @@ exports.dailyGoodAfternoonReminder1315 = onSchedule(
       region: "asia-south1",
       schedule: "15 13 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7595,8 +7531,8 @@ exports.dailyGoodEveningReminder1800 = onSchedule(
       region: "asia-south1",
       schedule: "0 18 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7616,8 +7552,8 @@ exports.dailyGoodNightReminder2100 = onSchedule(
       region: "asia-south1",
       schedule: "0 21 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
-      timeoutSeconds: 300,
+      memory: "256MiB",
+      timeoutSeconds: 120,
     },
     async () => {
       await sendDailyPersonalizedReminder({
@@ -7730,7 +7666,9 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
         if (eventNames.length === 0 || !group.imageUrl) {
           continue;
         }
-        const copy = dynamicEventBroadcastCopy(eventNames, "te");
+        const topicRegion = topic.startsWith("region_") ? topic.replace(/^region_/, "") : "";
+        const regionInfo = regionInfoForId(topicRegion);
+        const copy = dynamicEventBroadcastCopy(eventNames, regionInfo.lang);
         try {
           await sendReminderToTopic({
             topic,
@@ -7745,7 +7683,7 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
             bodyKey: "dynamic_event_body",
             route: "home",
             openKind: "event",
-            languageCode: "te",
+            languageCode: regionInfo.langCode,
             extraData: {
               eventNames: eventNames.join("|"),
               eventCount: String(eventNames.length),
@@ -7866,7 +7804,7 @@ exports.cleanupExpiredCreatorPosters = onSchedule(
 exports.cleanupExpiredCommunityStatuses = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 60 minutes",
+      schedule: "30 3 * * *",
       timeZone: "Asia/Kolkata",
       timeoutSeconds: 300,
       memory: "256MiB",
@@ -7947,9 +7885,9 @@ exports.cleanupExpiredCommunityStatuses = onSchedule(
 exports.retryPendingSubscriptionAcknowledgements = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 30 minutes",
+      schedule: "0 */12 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "512MiB",
+      memory: "256MiB",
     },
     async () => {
       const pendingSnap = await db.collection(subscriptionCollections.serverTokens)

@@ -40,6 +40,7 @@ class AppScreenBackButton extends StatelessWidget {
       shadowColor: const Color(0x220F172A),
       child: IconButton(
         tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         icon: Icon(Icons.arrow_back_rounded, color: color),
         onPressed: () => _handleBack(context),
       ),

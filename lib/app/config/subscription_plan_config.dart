@@ -20,7 +20,7 @@ class SubscriptionPlanConfig {
 
   static const String trialPriceDisplay = '₹4';
   static const int trialDays = 3;
-  static const String monthlyPriceDisplay = '₹149';
+  static const String monthlyPriceDisplay = '₹99';
   static const String yearlyPriceDisplay = '₹699';
   static const Duration entitlementCacheTtl = Duration(minutes: 10);
 

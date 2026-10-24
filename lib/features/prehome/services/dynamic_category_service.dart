@@ -72,6 +72,9 @@ class DynamicCategoryService {
   final DynamicEventRepository _repository;
   final int daysBeforeEvent;
 
+  static final Map<String, List<DynamicCategory>> _categoriesForDateCache =
+      <String, List<DynamicCategory>>{};
+
   List<DynamicCategory> categoriesForDate(
     DateTime now, {
     AppLanguage language = AppLanguage.telugu,
@@ -81,6 +84,13 @@ class DynamicCategoryService {
     final today = DateTime(now.year, now.month, now.day);
     final scopes = allowedScopes ?? DynamicEventScope.values.toSet();
     final regionId = _normalizeToken(selectedRegionId ?? '');
+    final cacheKey =
+        '${today.year}-${today.month}-${today.day}-${language.name}-$daysBeforeEvent-$regionId-${scopes.map((s) => s.name).join(",")}';
+    final cached = _categoriesForDateCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
     final seenSlugs = <String>{};
     final output = <DynamicCategory>[];
 
@@ -101,7 +111,9 @@ class DynamicCategoryService {
     }
 
     output.sort(_compareCategories);
-    return output;
+    final unmodifiableOutput = List<DynamicCategory>.unmodifiable(output);
+    _categoriesForDateCache[cacheKey] = unmodifiableOutput;
+    return unmodifiableOutput;
   }
 
   List<DynamicCategory> categoriesForSlugs(

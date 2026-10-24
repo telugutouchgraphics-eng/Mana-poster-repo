@@ -203,7 +203,7 @@ class _InvoiceCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      invoice.priceLabel,
+                      copy.priceLabel(invoice),
                       style: const TextStyle(
                         color: Color(0xFF475569),
                         fontWeight: FontWeight.w600,
@@ -379,6 +379,103 @@ class _PurchaseInvoicesCopy {
 
   final AppStrings strings;
 
+  String priceLabel(PurchaseInvoice invoice) {
+    final amount = invoice.priceLabel.isEmpty
+        ? priceUnavailable
+        : invoice.priceLabel;
+    final period = switch (invoice.billingPeriod) {
+      InvoiceBillingPeriod.monthly => monthlyPlan,
+      InvoiceBillingPeriod.yearly => yearlyPlan,
+      InvoiceBillingPeriod.introductory => introductoryPlan,
+      InvoiceBillingPeriod.unknown => '',
+    };
+    return period.isEmpty ? amount : '$amount · $period';
+  }
+
+  String get priceUnavailable => strings.localized(
+    telugu: 'ధర రికార్డు అందుబాటులో లేదు',
+    english: 'Price record unavailable',
+    hindi: 'कीमत का रिकॉर्ड उपलब्ध नहीं है',
+    tamil: 'விலைப் பதிவு கிடைக்கவில்லை',
+    kannada: 'ಬೆಲೆಯ ದಾಖಲೆ ಲಭ್ಯವಿಲ್ಲ',
+    malayalam: 'വിലയുടെ രേഖ ലഭ്യമല്ല',
+    marathi: 'किमतीची नोंद उपलब्ध नाही',
+    gujarati: 'કિંમતનો રેકોર્ડ ઉપલબ્ધ નથી',
+    bengali: 'দামের রেকর্ড পাওয়া যাচ্ছে না',
+    punjabi: 'ਕੀਮਤ ਦਾ ਰਿਕਾਰਡ ਉਪਲਬਧ ਨਹੀਂ ਹੈ',
+    odia: 'ମୂଲ୍ୟର ରେକର୍ଡ ଉପଲବ୍ଧ ନାହିଁ',
+    assamese: 'মূল্যৰ ৰেকৰ্ড উপলব্ধ নহয়',
+    konkani: 'किमतीची नोंद उपलब्ध ना',
+    nepali: 'मूल्यको अभिलेख उपलब्ध छैन',
+    meitei: 'মমলগী রেকোর্দ ফংদে',
+    mizo: 'Man chhinchhiahna a awm lo',
+    kashmiri: 'قیمتُک ریکارڈ چھُ نہٕ دستیاب',
+    ladakhi: 'རིན་གོང་གི་ཐོ་མེད།',
+  );
+
+  String get monthlyPlan => strings.localized(
+    telugu: 'నెలవారీ ప్లాన్',
+    english: 'Monthly plan',
+    hindi: 'मासिक योजना',
+    tamil: 'மாதாந்திரத் திட்டம்',
+    kannada: 'ಮಾಸಿಕ ಯೋಜನೆ',
+    malayalam: 'പ്രതിമാസ പ്ലാൻ',
+    marathi: 'मासिक योजना',
+    gujarati: 'માસિક પ્લાન',
+    bengali: 'মাসিক প্ল্যান',
+    punjabi: 'ਮਹੀਨਾਵਾਰ ਪਲਾਨ',
+    odia: 'ମାସିକ ପ୍ଲାନ୍',
+    assamese: 'মাহিলি আঁচনি',
+    konkani: 'म्हयन्याची येवजण',
+    nepali: 'मासिक योजना',
+    meitei: 'থাগী প্লান',
+    mizo: 'Thla khat plan',
+    kashmiri: 'ماہانہٕ پلان',
+    ladakhi: 'ཟླ་རེའི་འཆར་གཞི།',
+  );
+
+  String get yearlyPlan => strings.localized(
+    telugu: 'వార్షిక ప్లాన్',
+    english: 'Yearly plan',
+    hindi: 'वार्षिक योजना',
+    tamil: 'வருடாந்திரத் திட்டம்',
+    kannada: 'ವಾರ್ಷಿಕ ಯೋಜನೆ',
+    malayalam: 'വാർഷിക പ്ലാൻ',
+    marathi: 'वार्षिक योजना',
+    gujarati: 'વાર્ષિક પ્લાન',
+    bengali: 'বার্ষিক প্ল্যান',
+    punjabi: 'ਸਾਲਾਨਾ ਪਲਾਨ',
+    odia: 'ବାର୍ଷିକ ପ୍ଲାନ୍',
+    assamese: 'বাৰ্ষিক আঁচনি',
+    konkani: 'वर्साची येवजण',
+    nepali: 'वार्षिक योजना',
+    meitei: 'চহীগী প্লান',
+    mizo: 'Kum khat plan',
+    kashmiri: 'سالانہٕ پلان',
+    ladakhi: 'ལོ་རེའི་འཆར་གཞི།',
+  );
+
+  String get introductoryPlan => strings.localized(
+    telugu: 'ప్రారంభ ఆఫర్',
+    english: 'Introductory offer',
+    hindi: 'शुरुआती ऑफ़र',
+    tamil: 'அறிமுகச் சலுகை',
+    kannada: 'ಪರಿಚಯ ಕೊಡುಗೆ',
+    malayalam: 'ആമുഖ ഓഫർ',
+    marathi: 'प्रारंभिक ऑफर',
+    gujarati: 'પ્રારંભિક ઑફર',
+    bengali: 'প্রারম্ভিক অফার',
+    punjabi: 'ਸ਼ੁਰੂਆਤੀ ਪੇਸ਼ਕਸ਼',
+    odia: 'ପ୍ରାରମ୍ଭିକ ଅଫର୍',
+    assamese: 'আৰম্ভণিৰ অফাৰ',
+    konkani: 'सुरवेची ऑफर',
+    nepali: 'प्रारम्भिक अफर',
+    meitei: 'অহানবা ওফর',
+    mizo: 'A tir offer',
+    kashmiri: 'ابتدٲیی آفر',
+    ladakhi: 'འགོ་བཙུགས་ཀྱི་ཕན་ཐོགས།',
+  );
+
   String get title => strings.localized(
     telugu: 'కొనుగోలు ఇన్వాయిసులు',
     english: 'Purchase invoices',
@@ -519,7 +616,8 @@ class _PurchaseInvoicesCopy {
     nepali: 'यस खाताका लागि हालसम्म कुनै खरिद विवरण उपलब्ध छैन।',
     meitei: 'Account asigi damak leiraba details amatta leitari.',
     mizo: 'He account tan hian leina chanchin a la awm lo.',
-    kashmiri: 'یَتھ کھاتَس خٲطرٕ چھنہٕ وؠن کانٛہہ خٔریٖداری ہٕنٛز تفصیلات دستِیاب۔',
+    kashmiri:
+        'یَتھ کھاتَس خٲطرٕ چھنہٕ وؠن کانٛہہ خٔریٖداری ہٕنٛز تفصیلات دستِیاب۔',
     ladakhi: 'འདི་འདྲའི་ account ལ་ད་དུང་ཉོ་སྒྲུབ་ཀྱི་གནས་ཚུལ་མེད།',
   );
 
@@ -561,7 +659,8 @@ class _PurchaseInvoicesCopy {
     nepali: 'खरिद विवरणहरू लोड गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।',
     meitei: 'Leiraba details load touba ngamkhide. Amuk hanna hotnabiyu.',
     mizo: 'Leina chanchin load theih a ni lo. Khawngaihin ti nawn leh rawh.',
-    kashmiri: 'خٔریٖداری ہٕنٛز تفصیلات ہیکہِ نہٕ لوڈ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
+    kashmiri:
+        'خٔریٖداری ہٕنٛز تفصیلات ہیکہِ نہٕ لوڈ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
     ladakhi: 'ཉོ་སྒྲུབ་ཀྱི་གནས་ཚུལ་ load མ་ཐུབ། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
   );
 

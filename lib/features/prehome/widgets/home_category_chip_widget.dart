@@ -18,33 +18,8 @@ class _CategoryChip extends StatefulWidget {
 }
 
 class _CategoryChipState extends State<_CategoryChip> {
-  bool _isPressed = false;
-
-  void _handleTapDown(TapDownDetails _) {
-    if (!_isPressed) {
-      setState(() => _isPressed = true);
-      HapticFeedback.selectionClick();
-    }
-  }
-
-  void _handleTapUp(TapUpDetails _) {
-    if (_isPressed) {
-      setState(() => _isPressed = false);
-    }
-  }
-
-  void _handleTapCancel() {
-    if (_isPressed) {
-      setState(() => _isPressed = false);
-    }
-  }
-
   void _handleTap() {
-    if (!_isPressed) {
-      HapticFeedback.selectionClick();
-    } else {
-      setState(() => _isPressed = false);
-    }
+    HapticFeedback.selectionClick();
     try {
       Scrollable.ensureVisible(
         context,
@@ -96,22 +71,15 @@ class _CategoryChipState extends State<_CategoryChip> {
         ? Colors.white.withValues(alpha: 0.82)
         : textColor.withValues(alpha: 0.78);
 
-    return AnimatedScale(
-      scale: _isPressed ? 0.93 : 1.0,
-      duration: const Duration(milliseconds: 90),
-      curve: Curves.easeOutCubic,
-      child: Material(
-        color: chipTint,
+    return Material(
+      color: chipTint,
+      borderRadius: BorderRadius.circular(999),
+      elevation: isSelected || isAll ? 1.0 : 0.0,
+      shadowColor: const Color(0x1F0F172A),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _handleTap,
         borderRadius: BorderRadius.circular(999),
-        elevation: isSelected || isAll ? 1.0 : 0.0,
-        shadowColor: const Color(0x1F0F172A),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTapDown: _handleTapDown,
-          onTapUp: _handleTapUp,
-          onTapCancel: _handleTapCancel,
-          onTap: _handleTap,
-          borderRadius: BorderRadius.circular(999),
           splashColor: isSelected
               ? Colors.white.withValues(alpha: 0.32)
               : const Color(0xFF6D28D9).withValues(alpha: 0.18),
@@ -183,7 +151,6 @@ class _CategoryChipState extends State<_CategoryChip> {
             ),
           ),
         ),
-      ),
     );
   }
 }

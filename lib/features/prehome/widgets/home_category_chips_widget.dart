@@ -94,7 +94,7 @@ class _CategoryRowsScroller extends StatefulWidget {
   });
 
   static const int _rowCount = 3;
-  static const double _minChipWidth = 38;
+  static const double _minChipWidth = 48;
   static const double _maxChipWidth = 184;
   static const double _maxSelectedMoreChipWidth = 132;
   static const double _maxDynamicChipWidth = 268;

@@ -57,7 +57,7 @@ class FirebaseAuthService {
     try {
       if (kIsWeb) {
         final isNewUser = await _signInWithGoogleOnWeb();
-        return _claimFirst150TrialIfEligible(isNewUser: isNewUser);
+        return await _claimFirst150TrialIfEligible(isNewUser: isNewUser);
       }
 
       await _ensureGoogleSignInInitialized();
@@ -80,7 +80,7 @@ class FirebaseAuthService {
       final userCredential = await _withGoogleTimeout(
         _firebaseAuth.signInWithCredential(credential),
       );
-      return _claimFirst150TrialIfEligible(
+      return await _claimFirst150TrialIfEligible(
         isNewUser: userCredential.additionalUserInfo?.isNewUser == true,
       );
     } on AuthFailure {
@@ -117,7 +117,7 @@ class FirebaseAuthService {
         email: normalizedEmail,
         password: normalizedPassword,
       );
-      return _claimFirst150TrialIfEligible(isNewUser: false);
+      return await _claimFirst150TrialIfEligible(isNewUser: false);
     } on FirebaseAuthException catch (error) {
       final canRetryWithTrimmedPassword =
           error.code == 'invalid-credential' &&
@@ -129,7 +129,7 @@ class FirebaseAuthService {
             email: normalizedEmail,
             password: trimmedPassword,
           );
-          return _claimFirst150TrialIfEligible(isNewUser: false);
+          return await _claimFirst150TrialIfEligible(isNewUser: false);
         } on FirebaseAuthException catch (retryError) {
           throw _mapFirebaseAuthError(retryError);
         }
@@ -150,7 +150,7 @@ class FirebaseAuthService {
         email: normalizedEmail,
         password: normalizedPassword,
       );
-      return _claimFirst150TrialIfEligible(isNewUser: true);
+      return await _claimFirst150TrialIfEligible(isNewUser: true);
     } on FirebaseAuthException catch (error) {
       if (error.code == 'email-already-in-use') {
         final methods = await _fetchSignInMethods(normalizedEmail);

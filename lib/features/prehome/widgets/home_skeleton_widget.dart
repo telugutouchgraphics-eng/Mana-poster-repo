@@ -23,7 +23,9 @@ class _PosterFeedSkeletonViewport extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: const EdgeInsets.only(top: 6, bottom: 18),
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       itemCount: 2,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (_, _) => const _PosterSkeletonCard(),

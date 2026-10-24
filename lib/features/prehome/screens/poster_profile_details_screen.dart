@@ -1409,12 +1409,16 @@ class _PosterProfileDetailsScreenState
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading:
-            (!widget.embeddedInProfileScreen && Navigator.of(context).canPop())
+        leading: Navigator.of(context).canPop()
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),
-                onPressed: () => Navigator.of(context).maybePop(_draftProfile),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () => Navigator.of(context).pop(
+                  widget.embeddedInProfileScreen
+                      ? _savedProfile
+                      : _draftProfile,
+                ),
               )
             : null,
         iconTheme: IconThemeData(

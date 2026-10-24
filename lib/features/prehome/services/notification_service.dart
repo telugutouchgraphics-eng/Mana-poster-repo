@@ -24,6 +24,7 @@ import 'package:mana_poster/features/prehome/services/app_religion_service.dart'
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,6 +65,8 @@ class NotificationService {
       'fcm_last_subscribed_religion_topic';
   static const String _lastSubscribedRegionTopicKey =
       'fcm_last_subscribed_region_topic';
+  static const String _lastSubscribedLanguageTopicKey =
+      'fcm_last_subscribed_language_topic';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -208,10 +211,28 @@ class NotificationService {
 
     final posterImageUrl = _readDataValue(message.data, 'posterImage');
     final posterBaseImageUrl = _readDataValue(message.data, 'posterBaseImage');
-    final headerText = _readDataValue(message.data, 'headerText');
-    final footerText = _readDataValue(message.data, 'footerText');
+    var headerText = _readDataValue(message.data, 'headerText');
+    var footerText = _readDataValue(message.data, 'footerText');
     final categoryKey = _readDataValue(message.data, 'categoryKey');
-    final userName = _readDataValue(message.data, 'userName');
+    var userName = _readDataValue(message.data, 'userName');
+    var userPhotoUrl = _readDataValue(message.data, 'userPhoto');
+
+    if (userName.isEmpty || userPhotoUrl.isEmpty) {
+      try {
+        final localProfile = await PosterProfileService.loadLocal();
+        if (userName.isEmpty && localProfile.displayName.isNotEmpty) {
+          userName = localProfile.displayName;
+        }
+        if (userPhotoUrl.isEmpty) {
+          if (localProfile.photoPath.isNotEmpty) {
+            userPhotoUrl = localProfile.photoPath;
+          } else if (localProfile.photoUrl.isNotEmpty) {
+            userPhotoUrl = localProfile.photoUrl;
+          }
+        }
+      } catch (_) {}
+    }
+
     final dataResolved = await _resolveMessageText(message.data);
     final resolved = await _personalizeWelcomeNotificationText(
       categoryKey: categoryKey,
@@ -231,11 +252,25 @@ class NotificationService {
       return;
     }
 
+    final AppFlowSnapshot flowSnapshot = await AppFlowService.loadSnapshot();
+    final AppLanguage appLanguage = flowSnapshot.language;
+    if (footerText.isEmpty) {
+      footerText = _defaultFooterTextForLanguage(appLanguage);
+    }
+    if (headerText.isEmpty) {
+      headerText = _defaultHeaderText(
+        categoryKey: categoryKey,
+        language: appLanguage,
+        userName: userName,
+        fallbackTitle: resolved.title,
+      );
+    }
+
     final _NotificationArtifactBundle bundle =
         await _buildNotificationArtifactBundle(
           posterImageUrl: posterImageUrl,
           posterBaseImageUrl: posterBaseImageUrl,
-          userPhotoUrl: _readDataValue(message.data, 'userPhoto'),
+          userPhotoUrl: userPhotoUrl,
           userName: userName,
           headerText: headerText,
           footerText: footerText,
@@ -253,8 +288,8 @@ class NotificationService {
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
     await plugin.show(
       id: id,
-      title: resolved.title,
-      body: resolved.body,
+      title: resolved.title.isNotEmpty ? resolved.title : _collapsedImageTitle,
+      body: resolved.body.isNotEmpty ? resolved.body : null,
       notificationDetails: bundle.details,
       payload: payload,
     );
@@ -614,6 +649,25 @@ class NotificationService {
       await prefs?.setString(_lastSubscribedRegionTopicKey, newRegionTopic);
     }
 
+    // 4. Subscribe to language topic
+    final appFlowSnapshot = await AppFlowService.loadSnapshot();
+    final String? newLanguageTopic = appFlowSnapshot.languageSelected
+        ? 'language_${appFlowSnapshot.language.name}'
+        : null;
+    final String? lastLanguageTopic = prefs?.getString(
+      _lastSubscribedLanguageTopicKey,
+    );
+    if (lastLanguageTopic != null &&
+        lastLanguageTopic.isNotEmpty &&
+        lastLanguageTopic != newLanguageTopic) {
+      await messaging.unsubscribeFromTopic(lastLanguageTopic);
+      await prefs?.remove(_lastSubscribedLanguageTopicKey);
+    }
+    if (newLanguageTopic != null && newLanguageTopic.isNotEmpty) {
+      await messaging.subscribeToTopic(newLanguageTopic);
+      await prefs?.setString(_lastSubscribedLanguageTopicKey, newLanguageTopic);
+    }
+
     // 4. Non-subscriber promo topic (free_users) — ₹0 FCM broadcast without reading Firestore
     final bool isPro =
         SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true;
@@ -896,13 +950,27 @@ class NotificationService {
       return categoryText;
     }
 
-    if (titleKey.isNotEmpty || bodyKey.isNotEmpty) {
+    final String resolvedCategory = _normalizeReminderCategory(
+      categoryKey.isNotEmpty
+          ? categoryKey
+          : titleKey.isNotEmpty
+          ? titleKey
+          : bodyKey,
+    );
+    final String lookupTitleKey = titleKey.isNotEmpty
+        ? titleKey
+        : (resolvedCategory.isNotEmpty ? '${resolvedCategory}_title' : '');
+    final String lookupBodyKey = bodyKey.isNotEmpty
+        ? bodyKey
+        : (resolvedCategory.isNotEmpty ? '${resolvedCategory}_body' : '');
+
+    if (lookupTitleKey.isNotEmpty || lookupBodyKey.isNotEmpty) {
       final title = _localizedNotificationText(
-        key: titleKey,
+        key: lookupTitleKey,
         language: effectiveLanguage,
       );
       final body = _localizedNotificationText(
-        key: bodyKey,
+        key: lookupBodyKey,
         language: effectiveLanguage,
       );
       if (title.isNotEmpty || body.isNotEmpty) {
@@ -1778,6 +1846,46 @@ class NotificationService {
         AppLanguage.kashmiri: 'تُہند رات پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
         AppLanguage.ladakhi: 'Khyod-kyi night poster ready in. Da share chos.',
       },
+      'motivation_title': {
+        AppLanguage.telugu: 'మోటివేషన్ పోస్టర్ సిద్ధం',
+        AppLanguage.hindi: 'मोटिवेशन पोस्टर तैयार',
+        AppLanguage.english: 'Motivational poster ready',
+        AppLanguage.tamil: 'மோட்டிவேஷன் போஸ்டர் தயார்',
+        AppLanguage.kannada: 'ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+        AppLanguage.malayalam: 'മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്',
+        AppLanguage.assamese: 'মটিভেচন পোষ্টাৰ সাজু',
+        AppLanguage.konkani: 'मोटिवेशन पोस्टर तयार',
+        AppLanguage.gujarati: 'મોટિવેશન પોસ્ટર તૈયાર',
+        AppLanguage.marathi: 'मोटिवेशन पोस्टर तयार',
+        AppLanguage.meitei: 'মোটিভেশন পোস্টর শেম্লে',
+        AppLanguage.mizo: 'Motivation poster ready',
+        AppLanguage.odia: 'ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+        AppLanguage.punjabi: 'ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ',
+        AppLanguage.nepali: 'मोटिभेसन पोस्टर तयार',
+        AppLanguage.bengali: 'মোটিভেশন পোস্টার প্রস্তুত',
+        AppLanguage.kashmiri: 'موٹیویشن پوسٹر تیار',
+        AppLanguage.ladakhi: 'Motivation poster ready',
+      },
+      'motivation_body': {
+        AppLanguage.telugu: 'మీ మోటివేషన్ పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.',
+        AppLanguage.hindi: 'आपका मोटिवेशन पोस्टर तैयार है। ऐप खोलें और शेयर करें।',
+        AppLanguage.english: 'Your motivational poster is ready. Open and share it.',
+        AppLanguage.tamil: 'உங்கள் மோட்டிவேஷன் போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.',
+        AppLanguage.kannada: 'ನಿಮ್ಮ ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.',
+        AppLanguage.malayalam: 'നിങ്ങളുടെ മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.',
+        AppLanguage.assamese: 'আপোনাৰ মটিভেচন পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।',
+        AppLanguage.konkani: 'तुमचो मोटिवेशन पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.',
+        AppLanguage.gujarati: 'તમારું મોટિવેશન પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.',
+        AppLanguage.marathi: 'तुमचा मोटिवेशन पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.',
+        AppLanguage.meitei: 'নহাক্কী মোটিভেশন পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
+        AppLanguage.mizo: 'I motivation poster a peih tawh. Tunah share rawh.',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।',
+        AppLanguage.punjabi: 'ਤੁਹਾਡਾ ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
+        AppLanguage.nepali: 'तपाईंको मोटिभेसन पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।',
+        AppLanguage.bengali: 'আপনার মোটিভেশন পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
+        AppLanguage.kashmiri: 'تُہند موٹیویشن پوسٹر تیار چھ। وُنہ شیئر کریو।',
+        AppLanguage.ladakhi: 'Khyod-kyi motivation poster ready in. Da share chos.',
+      },
       'free_trial_reminder_title': {
         AppLanguage.telugu:
             'మీ ఫోటో & పేరుతో పోస్టర్లు డౌన్‌లోడ్ చేసుకోండి! 🎨',
@@ -1924,27 +2032,63 @@ class NotificationService {
     if (downloadedPosterPath != null) {
       disposablePaths.add(downloadedPosterPath);
     }
-    final String? collapsedHeaderPath = downloadedPosterPath != null
-        ? await _extractCollapsedHeaderStrip(downloadedPosterPath)
-        : null;
-    if (collapsedHeaderPath != null) {
-      disposablePaths.add(collapsedHeaderPath);
+
+    String? userPhotoPath;
+    if (userPhotoUrl.trim().isNotEmpty) {
+      try {
+        final File localFile = File(userPhotoUrl.trim());
+        if (await localFile.exists()) {
+          userPhotoPath = userPhotoUrl.trim();
+        } else {
+          userPhotoPath = await _downloadImageForNotification(userPhotoUrl);
+          if (userPhotoPath != null) {
+            disposablePaths.add(userPhotoPath);
+          }
+        }
+      } catch (_) {}
     }
-    final String? posterPath = await _prepareExpandedPosterImage(
+
+    final String? framedPosterPath = await _renderFramedNotificationImage(
+      posterPath: downloadedPosterPath,
+      userPhotoPath: userPhotoPath,
+      userName: userName,
+      headerText: headerText,
+      footerText: footerText,
+      categoryKey: categoryKey,
+    );
+    if (framedPosterPath != null && framedPosterPath.trim().isNotEmpty) {
+      disposablePaths.add(framedPosterPath.trim());
+    }
+
+    final String? posterPath = framedPosterPath ?? await _prepareExpandedPosterImage(
       downloadedPosterPath,
     );
     if (posterPath != null && posterPath.trim().isNotEmpty) {
       disposablePaths.add(posterPath.trim());
     }
-    final String? userPhotoPath = await _downloadImageForNotification(
-      userPhotoUrl,
-    );
-    if (userPhotoPath != null) {
-      disposablePaths.add(userPhotoPath);
+
+    final String? collapsedHeaderPath = posterPath != null
+        ? await _extractCollapsedHeaderStrip(posterPath)
+        : (downloadedPosterPath != null
+            ? await _extractCollapsedHeaderStrip(downloadedPosterPath)
+            : null);
+    if (collapsedHeaderPath != null) {
+      disposablePaths.add(collapsedHeaderPath);
     }
 
     final AndroidNotificationDetails androidDetails;
+    final String cleanTitle = title.trim();
+    final String cleanBody = body.trim();
     if (posterPath != null) {
+      final String expandedTitle;
+      if (cleanTitle.isNotEmpty && cleanBody.isNotEmpty) {
+        expandedTitle = '<b>$cleanTitle</b><br/>$cleanBody';
+      } else if (cleanTitle.isNotEmpty) {
+        expandedTitle = '<b>$cleanTitle</b>';
+      } else {
+        expandedTitle = cleanBody;
+      }
+
       androidDetails = AndroidNotificationDetails(
         'mana_poster_general',
         'Mana Poster Ai Notifications',
@@ -1953,9 +2097,9 @@ class NotificationService {
         priority: Priority.high,
         styleInformation: BigPictureStyleInformation(
           FilePathAndroidBitmap(posterPath),
-          contentTitle: title.isNotEmpty ? title : _collapsedImageTitle,
-          summaryText: body.isNotEmpty ? body : _collapsedImageTitle,
-          htmlFormatContentTitle: false,
+          contentTitle: expandedTitle.isNotEmpty ? expandedTitle : null,
+          summaryText: cleanBody.isNotEmpty ? cleanBody : null,
+          htmlFormatContentTitle: true,
           htmlFormatSummaryText: false,
           largeIcon: userPhotoPath != null
               ? FilePathAndroidBitmap(userPhotoPath)
@@ -1964,7 +2108,6 @@ class NotificationService {
                     : FilePathAndroidBitmap(posterPath)),
           hideExpandedLargeIcon: true,
         ),
-        subText: '',
         category: AndroidNotificationCategory.social,
       );
     } else {
@@ -2205,6 +2348,392 @@ class NotificationService {
         stackTrace: stackTrace,
       );
       return imagePath;
+    }
+  }
+
+  static String _defaultFooterTextForLanguage(AppLanguage language) {
+    return switch (language) {
+      AppLanguage.telugu => 'ఇప్పుడే షేర్ చేయండి',
+      AppLanguage.hindi => 'अभी शेयर करें',
+      AppLanguage.english => 'Share now',
+      AppLanguage.tamil => 'இப்போது பகிருங்கள்',
+      AppLanguage.kannada => 'ಈಗ ಹಂಚಿ',
+      AppLanguage.malayalam => 'ഇപ്പോൾ ഷെയർ ചെയ്യൂ',
+      AppLanguage.assamese => 'এতিয়াই শ্বেয়াৰ কৰক',
+      AppLanguage.konkani => 'आतां शेअर करात',
+      AppLanguage.gujarati => 'હમણાં શેર કરો',
+      AppLanguage.marathi => 'आत्ताच शेअर करा',
+      AppLanguage.meitei => 'হৌজিক শেয়র তৌ',
+      AppLanguage.mizo => 'Tunah share rawh',
+      AppLanguage.odia => 'ଏବେ ସେୟାର କରନ୍ତୁ',
+      AppLanguage.punjabi => 'ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ',
+      AppLanguage.nepali => 'अहिले शेयर गर्नुहोस्',
+      AppLanguage.bengali => 'এখনই শেয়ার করুন',
+      AppLanguage.kashmiri => 'وُنہ شیئر کریو',
+      AppLanguage.ladakhi => 'Da share chos',
+    };
+  }
+
+  static String _defaultHeaderText({
+    required String categoryKey,
+    required AppLanguage language,
+    required String userName,
+    required String fallbackTitle,
+  }) {
+    final cleanCategory = categoryKey.trim().toLowerCase();
+    final localizedTitle = _localizedNotificationText(
+      key: '${cleanCategory}_title',
+      language: language,
+    );
+    final resolvedTitle = localizedTitle.isNotEmpty
+        ? localizedTitle
+        : (fallbackTitle.isNotEmpty ? fallbackTitle : 'Mana Poster Ai');
+    final name = userName.trim();
+    if (name.isEmpty) {
+      return resolvedTitle;
+    }
+    return switch (language.supportedUiLanguage) {
+      SupportedUiLanguage.telugu => '$name గారు, $resolvedTitle!',
+      SupportedUiLanguage.hindi => '$name जी, $resolvedTitle!',
+      _ => '$resolvedTitle, $name!',
+    };
+  }
+
+  static void _drawTextOnCanvas({
+    required Canvas canvas,
+    required String text,
+    required Offset offset,
+    required double maxWidth,
+    required double fontSize,
+    required Color color,
+    FontWeight fontWeight = FontWeight.bold,
+    TextAlign textAlign = TextAlign.left,
+    int maxLines = 1,
+  }) {
+    if (text.trim().isEmpty) {
+      return;
+    }
+    final ui.ParagraphBuilder builder = ui.ParagraphBuilder(
+      ui.ParagraphStyle(
+        textAlign: textAlign,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        maxLines: maxLines,
+        ellipsis: '...',
+      ),
+    )
+      ..pushStyle(
+        ui.TextStyle(
+          color: color,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+        ),
+      )
+      ..addText(text.trim());
+
+    final ui.Paragraph paragraph = builder.build()
+      ..layout(ui.ParagraphConstraints(width: maxWidth));
+
+    canvas.drawParagraph(paragraph, offset);
+  }
+
+  static void _drawCircularAvatar({
+    required Canvas canvas,
+    required ui.Image? image,
+    required Offset center,
+    required double radius,
+    required String fallbackInitial,
+    required Color borderColor,
+    required double borderWidth,
+    required Color backgroundColor,
+    Color initialColor = const Color(0xFFFFFFFF),
+  }) {
+    final Path circlePath = Path()
+      ..addOval(Rect.fromCircle(center: center, radius: radius));
+
+    canvas.drawPath(
+      circlePath,
+      Paint()..color = backgroundColor,
+    );
+
+    if (image != null) {
+      canvas.save();
+      canvas.clipPath(circlePath);
+
+      final double imgW = image.width.toDouble();
+      final double imgH = image.height.toDouble();
+      if (imgW > 0 && imgH > 0) {
+        final Rect dstRect = Rect.fromCircle(center: center, radius: radius);
+        final FittedSizes fitted = applyBoxFit(
+          BoxFit.cover,
+          Size(imgW, imgH),
+          dstRect.size,
+        );
+        final Rect inscribe = Alignment.center.inscribe(
+          fitted.destination,
+          dstRect,
+        );
+        canvas.drawImageRect(
+          image,
+          Rect.fromLTWH(0, 0, imgW, imgH),
+          inscribe,
+          Paint()..isAntiAlias = true,
+        );
+      }
+      canvas.restore();
+    } else {
+      _drawTextOnCanvas(
+        canvas: canvas,
+        text: fallbackInitial,
+        offset: Offset(center.dx - radius, center.dy - (radius * 0.55)),
+        maxWidth: radius * 2,
+        fontSize: radius * 0.9,
+        color: initialColor,
+        fontWeight: FontWeight.bold,
+        textAlign: TextAlign.center,
+      );
+    }
+
+    if (borderWidth > 0) {
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color = borderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = borderWidth,
+      );
+    }
+  }
+
+  static Future<String?> _renderFramedNotificationImage({
+    required String? posterPath,
+    required String? userPhotoPath,
+    required String userName,
+    required String headerText,
+    required String footerText,
+    required String categoryKey,
+  }) async {
+    if (posterPath == null || posterPath.trim().isEmpty) {
+      return null;
+    }
+    try {
+      final File sourceFile = File(posterPath.trim());
+      if (!await sourceFile.exists()) {
+        return posterPath;
+      }
+      final Uint8List bytes = await sourceFile.readAsBytes();
+      if (bytes.isEmpty) {
+        return posterPath;
+      }
+      final ui.Codec codec = await instantiateImageCodec(bytes);
+      final ui.FrameInfo frame = await codec.getNextFrame();
+      final ui.Image posterImage = frame.image;
+
+      ui.Image? userPhotoImage;
+      if (userPhotoPath != null && userPhotoPath.trim().isNotEmpty) {
+        try {
+          final File photoFile = File(userPhotoPath.trim());
+          if (await photoFile.exists()) {
+            final Uint8List photoBytes = await photoFile.readAsBytes();
+            if (photoBytes.isNotEmpty) {
+              final ui.Codec photoCodec = await instantiateImageCodec(photoBytes);
+              final ui.FrameInfo photoFrame = await photoCodec.getNextFrame();
+              userPhotoImage = photoFrame.image;
+            }
+          }
+        } catch (_) {}
+      }
+
+      try {
+        const double canvasWidth = 1080.0;
+        const double canvasHeight = 900.0;
+
+        final ui.PictureRecorder recorder = ui.PictureRecorder();
+        final Canvas canvas = Canvas(recorder);
+
+        // 1. Base background
+        canvas.drawRect(
+          const Rect.fromLTWH(0, 0, canvasWidth, canvasHeight),
+          Paint()..color = const Color(0xFFFFFFFF),
+        );
+
+        // 2. Outer frame border
+        final Paint borderPaint = Paint()
+          ..color = const Color(0xFF0A9F16)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16.0;
+        canvas.drawRect(
+          const Rect.fromLTWH(8, 8, canvasWidth - 16, canvasHeight - 16),
+          borderPaint,
+        );
+
+        // 3. Notification Header Band (Height: 232px)
+        const double headerHeight = 232.0;
+        canvas.drawRect(
+          const Rect.fromLTWH(0, 0, canvasWidth, headerHeight),
+          Paint()..color = const Color(0xFF15930E),
+        );
+
+        // Header Avatar (x=34, y=62, diameter=106)
+        const double avatarLeft = 34.0;
+        const double avatarTop = 62.0;
+        const double avatarSize = 106.0;
+        const double avatarRadius = avatarSize / 2;
+        final Offset avatarCenter = Offset(avatarLeft + avatarRadius, avatarTop + avatarRadius);
+
+        _drawCircularAvatar(
+          canvas: canvas,
+          image: userPhotoImage,
+          center: avatarCenter,
+          radius: avatarRadius,
+          fallbackInitial: userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'M',
+          borderColor: const Color(0xD1FFFFFF),
+          borderWidth: 4.0,
+          backgroundColor: const Color(0xFF0A9F16),
+        );
+
+        // Header Brand Text
+        _drawTextOnCanvas(
+          canvas: canvas,
+          text: 'Mana Poster Ai',
+          offset: const Offset(168, 28),
+          maxWidth: 868,
+          fontSize: 20,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w900,
+        );
+
+        // Header Localized Greeting Text
+        final String safeHeader = headerText.trim().isNotEmpty
+            ? headerText.trim()
+            : 'Mana Poster';
+        _drawTextOnCanvas(
+          canvas: canvas,
+          text: safeHeader,
+          offset: const Offset(168, 56),
+          maxWidth: 868,
+          fontSize: safeHeader.length > 25 ? 40 : 48,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w900,
+          maxLines: 2,
+        );
+
+        // 4. Center Poster Image (x=36, y=246, width=1008, height=390)
+        const Rect posterRect = Rect.fromLTWH(36, 246, 1008, 390);
+        final FittedSizes fitted = applyBoxFit(
+          BoxFit.contain,
+          Size(posterImage.width.toDouble(), posterImage.height.toDouble()),
+          posterRect.size,
+        );
+        final Rect destPosterRect = Alignment.center.inscribe(
+          fitted.destination,
+          posterRect,
+        );
+
+        // Background behind poster
+        canvas.drawRect(
+          posterRect,
+          Paint()..color = const Color(0xFFF4F4F4),
+        );
+        canvas.drawImageRect(
+          posterImage,
+          Rect.fromLTWH(0, 0, posterImage.width.toDouble(), posterImage.height.toDouble()),
+          destPosterRect,
+          Paint()..isAntiAlias = true,
+        );
+
+        // 5. Footer area (White background)
+        const Rect footerWhiteRect = Rect.fromLTWH(36, 636, 1008, 140);
+        canvas.drawRect(footerWhiteRect, Paint()..color = const Color(0xFFFFFFFF));
+
+        // Center Profile Avatar in footer
+        const Offset footerAvatarCenter = Offset(540, 642);
+        const double footerAvatarRadius = 50.0;
+
+        _drawCircularAvatar(
+          canvas: canvas,
+          image: userPhotoImage,
+          center: footerAvatarCenter,
+          radius: footerAvatarRadius,
+          fallbackInitial: userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'M',
+          borderColor: const Color(0xFF0A9F16),
+          borderWidth: 4.0,
+          backgroundColor: const Color(0xFFE8F5E9),
+          initialColor: const Color(0xFF0A9F16),
+        );
+
+        // User Name under avatar
+        final String safeDisplayName = userName.trim();
+        if (safeDisplayName.isNotEmpty) {
+          _drawTextOnCanvas(
+            canvas: canvas,
+            text: safeDisplayName,
+            offset: const Offset(80, 704),
+            maxWidth: 920,
+            fontSize: 26,
+            color: const Color(0xFF1F7D1F),
+            fontWeight: FontWeight.w800,
+            textAlign: TextAlign.center,
+          );
+        }
+
+        // 6. Share bar at bottom
+        const Rect shareBarRect = Rect.fromLTWH(36, 750, 1008, 68);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(shareBarRect, const Radius.circular(8)),
+          Paint()..color = const Color(0xFF03B92B),
+        );
+
+        final String safeFooter = footerText.trim().isNotEmpty
+            ? footerText.trim()
+            : 'ఇప్పుడే షేర్ చేయండి';
+        _drawTextOnCanvas(
+          canvas: canvas,
+          text: safeFooter,
+          offset: const Offset(36, 768),
+          maxWidth: 1008,
+          fontSize: 28,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w800,
+          textAlign: TextAlign.center,
+        );
+
+        // Render picture to image
+        final ui.Picture picture = recorder.endRecording();
+        final ui.Image renderedImage = await picture.toImage(
+          canvasWidth.round(),
+          canvasHeight.round(),
+        );
+
+        try {
+          final ByteData? byteData = await renderedImage.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
+          if (byteData == null) {
+            return posterPath;
+          }
+          final Directory directory = await getTemporaryDirectory();
+          final File outFile = File(
+            '${directory.path}/notif_framed_${DateTime.now().microsecondsSinceEpoch}.png',
+          );
+          await outFile.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
+          return outFile.path;
+        } finally {
+          renderedImage.dispose();
+        }
+      } finally {
+        posterImage.dispose();
+        userPhotoImage?.dispose();
+      }
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification framed image rendering failed: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return posterPath;
     }
   }
 

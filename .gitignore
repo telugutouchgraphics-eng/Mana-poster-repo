@@ -95,3 +95,5 @@ flutter_01.png
 packages/**/.gradle/
 packages/**/example/android/.gradle/
 packages/**/android/.gradle/
+
+.vscode/

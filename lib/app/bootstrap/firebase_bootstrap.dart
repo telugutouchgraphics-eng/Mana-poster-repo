@@ -32,6 +32,7 @@ class FirebaseBootstrap {
   const FirebaseBootstrap._();
 
   static Future<void>? _appCheckActivationFuture;
+  static Future<void>? _coreInitializationFuture;
 
   static bool get hasFirebaseApp => Firebase.apps.isNotEmpty;
 
@@ -39,20 +40,26 @@ class FirebaseBootstrap {
       DefaultFirebaseOptions.currentPlatformOrNull;
 
   static Future<void> ensureInitialized({bool activateAppCheck = true}) async {
-    if (Firebase.apps.isNotEmpty) {
-      if (activateAppCheck) {
-        await _activateAppCheckIfNeeded();
+    // Startup services must await the same core initialization. Concurrent
+    // initializeApp calls can otherwise finish before the default app is ready.
+    if (!hasFirebaseApp) {
+      final initialization = _coreInitializationFuture ??= _initializeCore();
+      await initialization;
+      if (!hasFirebaseApp &&
+          identical(_coreInitializationFuture, initialization)) {
+        _coreInitializationFuture = null;
       }
-      return;
     }
+    if (hasFirebaseApp && activateAppCheck) {
+      await _activateAppCheckIfNeeded();
+    }
+  }
 
+  static Future<void> _initializeCore() async {
     try {
       final FirebaseOptions? options = currentOptions;
       if (options != null) {
         await Firebase.initializeApp(options: options);
-        if (activateAppCheck) {
-          await _activateAppCheckIfNeeded();
-        }
         return;
       }
 
@@ -60,9 +67,6 @@ class FirebaseBootstrap {
           (defaultTargetPlatform == TargetPlatform.iOS ||
               defaultTargetPlatform == TargetPlatform.macOS)) {
         await Firebase.initializeApp();
-        if (activateAppCheck) {
-          await _activateAppCheckIfNeeded();
-        }
       }
     } catch (error, stackTrace) {
       developer.log(

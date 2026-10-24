@@ -27,33 +27,33 @@ class _HomeHeader extends StatelessWidget {
     final strings = context.strings;
     final topInset = MediaQuery.of(context).padding.top;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: onHeaderTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.fromLTRB(
-          10,
-          topInset + (compact ? 4 : 8),
-          10,
-          compact ? 5 : 9,
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        10,
+        topInset + (compact ? 4 : 8),
+        10,
+        compact ? 5 : 9,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFFD81B60),
+            Color(0xFFFF6F3C),
+            Color(0xFFFFB703),
+          ],
+          stops: <double>[0.0, 0.58, 1.0],
         ),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFFD81B60),
-              Color(0xFFFF6F3C),
-              Color(0xFFFFB703),
-            ],
-            stops: <double>[0.0, 0.58, 1.0],
-          ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-        ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: onHeaderTap,
               child: SizedBox(
                 height: 36,
                 child: TextField(
@@ -106,20 +106,54 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 9),
-            InkWell(
-              onTap: onProfileTap,
-              customBorder: const CircleBorder(),
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: _HeaderProfileAvatar(
-                  viewerPosterProfile: viewerPosterProfile,
+          ),
+          const SizedBox(width: 6),
+          Semantics(
+            button: true,
+            label: strings.localized(
+              telugu: 'ప్రొఫైల్',
+              english: 'Profile',
+              hindi: 'प्रोफ़ाइल',
+              tamil: 'சுயவிவரம்',
+              kannada: 'ಪ್ರೊಫೈಲ್',
+              malayalam: 'പ്രൊഫൈൽ',
+              marathi: 'प्रोफाइल',
+              gujarati: 'પ્રોફાઇલ',
+              bengali: 'প্রোফাইল',
+              punjabi: 'ਪ੍ਰੋਫਾਈਲ',
+              odia: 'ପ୍ରୋଫାଇଲ୍',
+              assamese: 'প্ৰʼফাইল',
+              konkani: 'प्रोफायल',
+              nepali: 'प्रोफाइल',
+              meitei: 'Profile',
+              mizo: 'Profile',
+              kashmiri: 'پروفائل',
+              ladakhi: 'Profile',
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkResponse(
+                onTap: onProfileTap,
+                radius: 22,
+                containedInkWell: false,
+                highlightShape: BoxShape.circle,
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Center(
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: _HeaderProfileAvatar(
+                        viewerPosterProfile: viewerPosterProfile,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

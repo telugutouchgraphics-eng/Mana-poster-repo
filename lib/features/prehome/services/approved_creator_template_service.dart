@@ -69,12 +69,15 @@ class ApprovedCreatorTemplateService {
 
   ApprovedCreatorTemplateService({
     FirebaseFirestore? firestore,
+    http.Client? httpClient,
     DynamicEventRepository dynamicEventRepository =
         const LocalDynamicEventRepository(),
   }) : _firestore = firestore,
+       _httpClient = httpClient,
        _dynamicEventRepository = dynamicEventRepository;
 
   final FirebaseFirestore? _firestore;
+  final http.Client? _httpClient;
   final DynamicEventRepository _dynamicEventRepository;
 
   void _debugLogStack(String message, StackTrace stackTrace) {
@@ -189,6 +192,34 @@ class ApprovedCreatorTemplateService {
   }) async {
     final page = await fetchApprovedTemplatesPage(pageSize: maxItems);
     return page.templates;
+  }
+
+  Future<List<ApprovedCreatorTemplate>> fetchPublishedCategoryPresence({
+    required String regionId,
+  }) async {
+    if (regionId.isEmpty) return const <ApprovedCreatorTemplate>[];
+    final response = await (_httpClient?.post ?? http.post)(
+      Uri.parse(_appCreatorPostersFeedEndpoint),
+      headers: const <String, String>{'content-type': 'application/json'},
+      body: jsonEncode(<String, Object?>{
+        'regionId': regionId,
+        'categoryPresence': true,
+      }),
+    ).timeout(const Duration(seconds: 30));
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 ||
+        decoded is! Map<String, dynamic> ||
+        decoded['ok'] != true ||
+        decoded['complete'] != true ||
+        decoded['posters'] is! List) {
+      throw const FormatException('Incomplete category presence response');
+    }
+    return (decoded['posters'] as List)
+        .whereType<Map<String, dynamic>>()
+        .map(_mapBackendPoster)
+        .whereType<ApprovedCreatorTemplate>()
+        .where(_isTemplateVisibleByLocalSchedule)
+        .toList(growable: false);
   }
 
   Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplatesWindow({
@@ -504,7 +535,7 @@ class ApprovedCreatorTemplateService {
           source: source,
         );
         if (fallbackDocs.isEmpty) {
-          return _hasPublishedTemplatesFromBackend(
+          return await _hasPublishedTemplatesFromBackend(
             categoryId: normalizedTarget,
             regionId: regionId,
           );
@@ -519,7 +550,7 @@ class ApprovedCreatorTemplateService {
         if (fallbackFiltered.isNotEmpty) {
           return true;
         }
-        return _hasPublishedTemplatesFromBackend(
+        return await _hasPublishedTemplatesFromBackend(
           categoryId: normalizedTarget,
           regionId: regionId,
         );
@@ -551,7 +582,7 @@ class ApprovedCreatorTemplateService {
         source: source,
       );
       if (fallbackDocs.isEmpty) {
-        return _hasPublishedTemplatesFromBackend(
+        return await _hasPublishedTemplatesFromBackend(
           categoryId: normalizedTarget,
           regionId: regionId,
         );
@@ -566,7 +597,7 @@ class ApprovedCreatorTemplateService {
       if (fallbackFiltered.isNotEmpty) {
         return true;
       }
-      return _hasPublishedTemplatesFromBackend(
+      return await _hasPublishedTemplatesFromBackend(
         categoryId: normalizedTarget,
         regionId: regionId,
       );
@@ -838,7 +869,7 @@ class ApprovedCreatorTemplateService {
       );
     }
     try {
-      return fetchApprovedTemplatesPage(
+      return await fetchApprovedTemplatesPage(
         pageSize: pageSize,
         startAfterDocument: startAfterDocument,
         source: Source.cache,

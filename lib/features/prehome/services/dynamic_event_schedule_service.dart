@@ -29,12 +29,26 @@ class DynamicEventScheduleService {
 
   final DynamicEventRepository _repository;
 
+  static final Map<String, List<ResolvedDynamicEventSchedule>> _schedulesCache =
+      <String, List<ResolvedDynamicEventSchedule>>{};
+
+  static final Map<String, Map<String, ResolvedDynamicEventSchedule>>
+      _schedulesByTagCache =
+          <String, Map<String, ResolvedDynamicEventSchedule>>{};
+
   List<ResolvedDynamicEventSchedule> schedulesForYear(
     int year, {
     int daysBeforeEvent = 0,
     Set<DynamicEventScope>? allowedScopes,
   }) {
     final scopes = allowedScopes ?? DynamicEventScope.values.toSet();
+    final cacheKey =
+        '$year-$daysBeforeEvent-${scopes.map((s) => s.name).join(",")}';
+    final cached = _schedulesCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
     final output = <ResolvedDynamicEventSchedule>[];
 
     for (final event in _repository.loadEvents()) {
@@ -58,7 +72,46 @@ class DynamicEventScheduleService {
       }
       return a.event.slug.compareTo(b.event.slug);
     });
-    return output;
+
+    final unmodifiableOutput =
+        List<ResolvedDynamicEventSchedule>.unmodifiable(output);
+    _schedulesCache[cacheKey] = unmodifiableOutput;
+    return unmodifiableOutput;
+  }
+
+  Map<String, ResolvedDynamicEventSchedule> schedulesByTagForYear(
+    int year, {
+    int daysBeforeEvent = 0,
+    Set<DynamicEventScope>? allowedScopes,
+  }) {
+    final scopes = allowedScopes ?? DynamicEventScope.values.toSet();
+    final cacheKey =
+        '$year-$daysBeforeEvent-${scopes.map((s) => s.name).join(",")}';
+    final cached = _schedulesByTagCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    final schedules = schedulesForYear(
+      year,
+      daysBeforeEvent: daysBeforeEvent,
+      allowedScopes: allowedScopes,
+    );
+    final tagMap = <String, ResolvedDynamicEventSchedule>{};
+    for (final schedule in schedules) {
+      final idTag = schedule.event.id.trim().toLowerCase();
+      final slugTag = schedule.event.slug.trim().toLowerCase();
+      if (idTag.isNotEmpty) {
+        tagMap.putIfAbsent(idTag, () => schedule);
+      }
+      if (slugTag.isNotEmpty) {
+        tagMap.putIfAbsent(slugTag, () => schedule);
+      }
+    }
+    final unmodifiableMap =
+        Map<String, ResolvedDynamicEventSchedule>.unmodifiable(tagMap);
+    _schedulesByTagCache[cacheKey] = unmodifiableMap;
+    return unmodifiableMap;
   }
 
   ResolvedDynamicEventSchedule? _resolveEvent(

@@ -15,6 +15,7 @@ import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
+import 'package:mana_poster/features/prehome/services/subscription_store_price.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 
 class SubscriptionPlanScreen extends StatefulWidget {
@@ -1807,16 +1808,45 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     );
   }
 
-  String get _monthlyPriceLabel {
-    final price = _selectedProduct?.price.trim() ?? '';
-    return price.isNotEmpty ? price : _monthlyFallbackPrice;
-  }
+  String get _monthlyPriceLabel => subscriptionRecurringPrice(
+    product: _selectedProduct,
+    basePlanId: SubscriptionPlanConfig.primaryMonthlyBasePlanId,
+    billingPeriods: const <String>{'P1M'},
+    fallback: _monthlyFallbackPrice,
+  );
 
   String get _trialPriceLabel => SubscriptionPlanConfig.trialPriceDisplay;
 
   int get _trialDays => SubscriptionPlanConfig.trialDays;
 
-  String get _yearlyPriceLabel => '$_yearlyFallbackPrice / year';
+  String get _yearlyPriceLabel {
+    final price = subscriptionRecurringPrice(
+      product: _selectedProduct,
+      basePlanId: SubscriptionPlanConfig.primaryYearlyBasePlanId,
+      billingPeriods: const <String>{'P1Y', 'P12M'},
+      fallback: _yearlyFallbackPrice,
+    );
+    return _strings.localized(
+      telugu: '$price / సంవత్సరం',
+      english: '$price / year',
+      hindi: '$price / वर्ष',
+      tamil: '$price / ஆண்டு',
+      kannada: '$price / ವರ್ಷ',
+      malayalam: '$price / വർഷം',
+      marathi: '$price / वर्ष',
+      gujarati: '$price / વર્ષ',
+      bengali: '$price / বছর',
+      punjabi: '$price / ਸਾਲ',
+      odia: '$price / ବର୍ଷ',
+      assamese: '$price / বছৰ',
+      konkani: '$price / वर्स',
+      nepali: '$price / वर्ष',
+      meitei: '$price / chahi',
+      mizo: '$price / kum',
+      kashmiri: '$price / ؤری',
+      ladakhi: '$price / ལོ།',
+    );
+  }
 
   String get _alreadyActiveLabel => _t(
     telugu: 'ఇప్పటికే యాక్టివ్',

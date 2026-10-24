@@ -33,6 +33,8 @@ class PurchaseInvoiceService {
   }
 }
 
+enum InvoiceBillingPeriod { unknown, monthly, yearly, introductory }
+
 class PurchaseInvoice {
   const PurchaseInvoice({
     required this.id,
@@ -45,6 +47,7 @@ class PurchaseInvoice {
     required this.expiryAt,
     required this.orderId,
     required this.platform,
+    this.billingPeriod = InvoiceBillingPeriod.unknown,
   });
 
   final String id;
@@ -57,6 +60,7 @@ class PurchaseInvoice {
   final DateTime? expiryAt;
   final String? orderId;
   final String? platform;
+  final InvoiceBillingPeriod billingPeriod;
 
   bool get isDisplayable => planName.trim().isNotEmpty;
 
@@ -65,13 +69,14 @@ class PurchaseInvoice {
   factory PurchaseInvoice.fromFirestore(String id, Map<String, dynamic> data) {
     final type = _readString(data['type']);
     final productId = _readString(data['productId']);
-    final basePlanId = _readString(data['basePlanId']);
+    final basePlanId = _readString(data['invoiceBasePlanId']).isNotEmpty
+        ? _readString(data['invoiceBasePlanId'])
+        : _readString(data['basePlanId']);
     final templateId = _readString(data['templateId']);
     final status = _statusLabel(data);
     final plan = _planLabel(
       type: type,
       productId: productId,
-      basePlanId: basePlanId,
       templateId: templateId,
     );
 
@@ -79,10 +84,13 @@ class PurchaseInvoice {
       id: id,
       type: type,
       planName: plan.name,
-      priceLabel: plan.price,
+      priceLabel: _paidPriceLabel(data) ?? plan.price,
+      billingPeriod: _billingPeriod(basePlanId, data),
       statusLabel: status,
       createdAt: _readDate(data['createdAt']),
-      transactionAt: _readDate(data['transactionDate']),
+      transactionAt:
+          _readDate(data['invoiceTransactionDate']) ??
+          _readDate(data['transactionDate']),
       expiryAt: _readDate(data['expiryTime']),
       orderId: _maskOrderId(
         _readString(data['latestOrderId']).isNotEmpty
@@ -96,30 +104,16 @@ class PurchaseInvoice {
   static _PurchaseInvoicePlan _planLabel({
     required String type,
     required String productId,
-    required String basePlanId,
     required String templateId,
   }) {
     final normalizedProduct = productId.toLowerCase();
-    final normalizedBasePlan = basePlanId.toLowerCase();
     if (normalizedProduct ==
         SubscriptionPlanConfig.primaryMonthlyProductId.toLowerCase()) {
-      return const _PurchaseInvoicePlan(
-        name: 'Mana Poster Premium',
-        price: 'Rs.149 monthly',
-      );
+      return const _PurchaseInvoicePlan(name: 'Mana Poster Premium', price: '');
     }
     if (normalizedProduct ==
         EditorSubscriptionPlanConfig.productId.toLowerCase()) {
-      if (normalizedBasePlan == EditorSubscriptionPlanConfig.yearlyBasePlanId) {
-        return const _PurchaseInvoicePlan(
-          name: 'Editor Pro',
-          price: 'Rs.699 yearly',
-        );
-      }
-      return const _PurchaseInvoicePlan(
-        name: 'Editor Pro',
-        price: 'Rs.99 monthly',
-      );
+      return const _PurchaseInvoicePlan(name: 'Editor Pro', price: '');
     }
     if (type == 'template_verify' || templateId.isNotEmpty) {
       return _PurchaseInvoicePlan(
@@ -137,6 +131,49 @@ class PurchaseInvoice {
       name: 'Google Play purchase',
       price: 'Google Play purchase',
     );
+  }
+
+  static InvoiceBillingPeriod _billingPeriod(
+    String basePlanId,
+    Map<String, dynamic> data,
+  ) {
+    if (data['invoiceIsTrialOrIntro'] == true) {
+      return InvoiceBillingPeriod.introductory;
+    }
+    final basePlan = basePlanId.toLowerCase();
+    if (basePlan == SubscriptionPlanConfig.primaryYearlyBasePlanId ||
+        basePlan == EditorSubscriptionPlanConfig.yearlyBasePlanId) {
+      return InvoiceBillingPeriod.yearly;
+    }
+    if (basePlan == SubscriptionPlanConfig.primaryMonthlyBasePlanId ||
+        basePlan == EditorSubscriptionPlanConfig.monthlyBasePlanId) {
+      return InvoiceBillingPeriod.monthly;
+    }
+    return InvoiceBillingPeriod.unknown;
+  }
+
+  static String? _paidPriceLabel(Map<String, dynamic> data) {
+    if (data['invoicePriceSource'] != 'google_play_order') return null;
+    final price = data['paidPrice'];
+    if (price is! Map) return null;
+    final currency = _readString(price['currencyCode']);
+    final units = _readString(price['units']);
+    final nanos = price['nanos'];
+    if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency) ||
+        !RegExp(r'^\d+$').hasMatch(units) ||
+        nanos is! int ||
+        nanos < 0 ||
+        nanos >= 1000000000) {
+      return null;
+    }
+    final amount = BigInt.tryParse(units);
+    if (amount == null) return null;
+    final fraction = nanos
+        .toString()
+        .padLeft(9, '0')
+        .replaceFirst(RegExp(r'0+$'), '');
+    final symbol = currency == 'INR' ? '₹' : '$currency ';
+    return '$symbol$amount.${fraction.padRight(2, '0')}';
   }
 
   static String _statusLabel(Map<String, dynamic> data) {

@@ -10,8 +10,14 @@ abstract class DynamicEventRepository {
 class LocalDynamicEventRepository implements DynamicEventRepository {
   const LocalDynamicEventRepository();
 
+  static List<DynamicCalendarEvent>? _cachedEvents;
+
   @override
   List<DynamicCalendarEvent> loadEvents() {
+    final cached = _cachedEvents;
+    if (cached != null) {
+      return cached;
+    }
     final seen = <String>{};
     final output = <DynamicCalendarEvent>[];
     for (final event in buildCsvBackedDynamicEvents()) {
@@ -19,6 +25,6 @@ class LocalDynamicEventRepository implements DynamicEventRepository {
         output.add(event);
       }
     }
-    return output;
+    return _cachedEvents = List<DynamicCalendarEvent>.unmodifiable(output);
   }
 }

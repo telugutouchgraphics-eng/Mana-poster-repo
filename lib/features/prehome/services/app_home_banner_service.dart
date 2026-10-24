@@ -2,11 +2,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+
+/// Coalesces startup, auth-ready and deferred banner loads for one home session.
+/// An empty/failed result is also final until the region or app session changes.
+class HomeBannerSessionLoader {
+  Future<void>? _load;
+
+  Future<void> load(Future<void> Function() fetch) {
+    return _load ??= Future<void>.sync(fetch);
+  }
+
+  void reset() => _load = null;
+}
 
 class AppHomeBannerService {
   const AppHomeBannerService({FirebaseFirestore? firestore})
@@ -27,9 +40,13 @@ class AppHomeBannerService {
   Future<List<AppHomeBanner>> fetchBanners({
     int maxItems = 8,
     String placement = 'home_category_banner',
+    bool allowCacheFallback = true,
   }) async {
-    if (_firestore == null && Firebase.apps.isEmpty) {
-      return const <AppHomeBanner>[];
+    if (_firestore == null) {
+      await FirebaseBootstrap.ensureInitialized();
+      if (Firebase.apps.isEmpty) {
+        throw StateError("Firebase is not ready for home banners");
+      }
     }
     final queryLimit = maxItems * 20;
     try {
@@ -38,24 +55,30 @@ class AppHomeBannerService {
           .where('active', isEqualTo: true)
           .orderBy('sortOrder')
           .limit(queryLimit)
-          .get(const GetOptions(source: Source.server));
-      return _filterForSelectedUser(
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 8));
+      return await _filterForSelectedUser(
         _mapSnapshot(snapshot, placement: placement),
         maxItems,
       );
     } catch (error, stackTrace) {
+      debugPrint(
+        'Home banner request failed (${error is FirebaseException ? error.code : error.runtimeType}).',
+      );
       _debugLogStack(
         'AppHomeBannerService.fetchBanners failed: $error',
         stackTrace,
       );
+      if (!allowCacheFallback) return const <AppHomeBanner>[];
       try {
         final fallbackSnapshot = await firestore
             .collection('appBanners')
             .where('active', isEqualTo: true)
             .orderBy('sortOrder')
             .limit(queryLimit)
-            .get();
-        return _filterForSelectedRegion(
+            .get()
+            .timeout(const Duration(seconds: 8));
+        return await _filterForSelectedRegion(
           _mapSnapshot(fallbackSnapshot, placement: placement),
           maxItems,
         );
@@ -80,7 +103,7 @@ class AppHomeBannerService {
           .orderBy('sortOrder')
           .limit(queryLimit)
           .get(const GetOptions(source: Source.cache));
-      return _filterForSelectedUser(
+      return await _filterForSelectedUser(
         _mapSnapshot(snapshot, placement: placement),
         maxItems,
       );
