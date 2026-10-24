@@ -7476,21 +7476,26 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _refreshPublishedCategoryPresence() async {
+  Future<void> _refreshPublishedCategoryPresence({bool force = false}) async {
     if (!mounted ||
         !_shouldRunRemoteHomeStartupTasks ||
         _selectedRegionId.isEmpty) {
       return;
     }
-    final existing = _categoryPresenceRefreshFuture;
-    if (existing != null) return existing;
-    if (_categoryPresenceLoadedForSession) return;
+    if (!force) {
+      final existing = _categoryPresenceRefreshFuture;
+      if (existing != null) return existing;
+      if (_categoryPresenceLoadedForSession) return;
+    }
     final regionId = _selectedRegionId;
     final generation = ++_categoryPresenceGeneration;
     final future = () async {
       try {
         final templates = await _approvedCreatorTemplateService
-            .fetchPublishedCategoryPresence(regionId: regionId);
+            .fetchPublishedCategoryPresence(
+              regionId: regionId,
+              force: force,
+            );
         final mapped = await _mapTemplatesOffMain(
           templates,
           phase: 'category_presence',
@@ -7663,8 +7668,11 @@ class _HomeScreenState extends State<HomeScreen>
       }
       await _loadRegionSelection();
       if (!mounted) return;
+      if (force) {
+        _approvedCreatorTemplateService.clearApprovedTemplateCache();
+      }
       await Future.wait<void>(<Future<void>>[
-        _refreshPublishedCategoryPresence(),
+        _refreshPublishedCategoryPresence(force: force),
         _loadHomeBanners(),
         _loadApprovedCreatorTemplates(forceRefresh: true),
         _loadManualEventCategories(),
