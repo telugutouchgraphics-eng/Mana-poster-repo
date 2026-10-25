@@ -43,6 +43,7 @@ class PosterIdentityVisual extends StatelessWidget {
       final photoWidget = Image(
         image: imageProvider,
         fit: fit,
+        alignment: Alignment.topCenter,
         width: double.infinity,
         height: double.infinity,
         errorBuilder: (_, _, _) => _fallbackVisual(),

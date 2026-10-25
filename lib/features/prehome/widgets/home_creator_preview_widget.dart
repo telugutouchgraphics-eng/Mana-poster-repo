@@ -1188,27 +1188,25 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                   width: visualWidth,
                   height: math.max(
                     1.0,
-                    constraints.maxHeight + stripOverflowAllowance,
+                    visualHeight + stripOverflowAllowance,
                   ),
                   child: Offstage(
                     offstage: !showPhotoOverlay,
                     child: IgnorePointer(
                       ignoring: !showPhotoOverlay,
                       child: LayoutBuilder(
-                        builder: (BuildContext context, BoxConstraints constraints) {
+                        builder: (BuildContext context, BoxConstraints innerConstraints) {
                           final photoScale =
                               widget.personalizationConfig.photoScale / 100;
                           final baseImageHeight = math.max(
                             1.0,
-                            constraints.maxHeight,
+                            visualHeight,
                           );
                           final totalCanvasHeight = math.max(
                             1.0,
-                            constraints.maxHeight,
+                            visualHeight,
                           );
-                          final visualScale = isBusinessProfile
-                              ? photoScale * 0.72
-                              : photoScale;
+                          final visualScale = photoScale;
                           final effectivePhotoShape = isBusinessProfile
                               ? 'circle'
                               : (widget.photoShapeOverride.trim().isNotEmpty
@@ -1247,7 +1245,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                               .personalizationConfig
                               .videoExtraPhotoRenderMode;
                           final additionalPhotoWidth =
-                              constraints.maxWidth *
+                              visualWidth *
                               (widget
                                       .personalizationConfig
                                       .videoExtraPhotoScale /
@@ -1256,32 +1254,32 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                               additionalPhotoWidth /
                               _photoMaskAspectRatio(additionalPhotoShape);
                           final additionalPhotoLeft =
-                              (constraints.maxWidth *
+                              (visualWidth *
                                   (widget
                                           .personalizationConfig
                                           .videoExtraPhotoX /
                                       100)) -
                               (additionalPhotoWidth / 2);
                           final additionalPhotoTop =
-                              (baseImageHeight *
+                              (visualHeight *
                                   (widget
                                           .personalizationConfig
                                           .videoExtraPhotoY /
                                       100)) -
                               (additionalPhotoHeight / 2);
-                          final width = constraints.maxWidth * visualScale;
+                          final width = visualWidth * visualScale;
                           final height = width / maskAspectRatio;
                           final left =
-                              (constraints.maxWidth *
+                              (visualWidth *
                                   (widget.personalizationConfig.photoX / 100)) -
                               (width / 2) +
-                              (constraints.maxWidth *
+                              (visualWidth *
                                   (widget.photoXOffsetPercent / 100));
                           final top =
-                              (baseImageHeight *
+                              (visualHeight *
                                   (widget.personalizationConfig.photoY / 100)) -
                               (height / 2) +
-                              (totalCanvasHeight *
+                              (visualHeight *
                                   (widget.photoYOffsetPercent / 100));
                           Widget animatedOverlay({
                             required Widget child,
@@ -1319,14 +1317,14 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                                     break;
                                   case 'left_to_place':
                                     offset = Offset(
-                                      (-constraints.maxWidth - overlayWidth) *
+                                      (-visualWidth - overlayWidth) *
                                           (1 - progress),
                                       0,
                                     );
                                     break;
                                   case 'right_to_place':
                                     offset = Offset(
-                                      (constraints.maxWidth + overlayWidth) *
+                                      (visualWidth + overlayWidth) *
                                           (1 - progress),
                                       0,
                                     );

@@ -145,26 +145,6 @@ class _PhotoShapeFrame extends StatelessWidget {
     }
   }
 
-  Alignment _cutoutAlignmentForShape(String currentShape) {
-    switch (_resolvedShape(currentShape)) {
-      case 'flower':
-        return const Alignment(0, 0.24);
-      case 'scallop_circle':
-      case 'soft_burst':
-        return const Alignment(0, 0.2);
-      case 'blob':
-        return const Alignment(0, 0.1);
-      case 'shield':
-        return const Alignment(0, 0.22);
-      case 'oval':
-        return const Alignment(0, 0.16);
-      case 'circle':
-      case 'square':
-        return const Alignment(0, 0.12);
-      default:
-        return const Alignment(0, 0.12);
-    }
-  }
 
   _ShapeFramePreset _presetForShape(String currentShape) {
     switch (currentShape) {
@@ -214,20 +194,12 @@ class _PhotoShapeFrame extends StatelessWidget {
     final normalizedEdgeStyle = _normalizedEdgeStyle(effectiveEdgeStyle);
     final shouldForceCleanOriginal =
         effectivePhotoRenderMode == 'original' && _isOriginalCleanShape(shape);
-    final imageAlignment = effectivePhotoRenderMode == 'cutout'
-        ? _cutoutAlignmentForShape(shape)
-        : Alignment.center;
     final mainImageScale = effectivePhotoRenderMode == 'cutout' ? 1.035 : 1.0;
     final blurImageScale = effectivePhotoRenderMode == 'cutout' ? 1.07 : 1.04;
 
     Widget buildImageLayer({required double scale, required bool isBlurLayer}) {
-      Widget layer = DecoratedBox(
-        decoration: const BoxDecoration(color: Colors.transparent),
-        child: FittedBox(
-          fit: BoxFit.contain,
-          alignment: imageAlignment,
-          child: SizedBox.square(dimension: 100, child: child),
-        ),
+      Widget layer = SizedBox.expand(
+        child: child,
       );
       if (effectivePhotoRenderMode == 'cutout') {
         layer = Transform.scale(
