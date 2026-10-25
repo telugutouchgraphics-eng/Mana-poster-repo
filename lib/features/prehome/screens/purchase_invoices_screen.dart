@@ -472,30 +472,33 @@ class _InvoiceBillCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      copy.totalPaid,
-                      style: const TextStyle(
-                        color: Color(0xFF334155),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        copy.totalPaid,
+                        style: const TextStyle(
+                          color: Color(0xFF334155),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      copy.taxInclusive,
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 2),
+                      Text(
+                        copy.taxInclusive,
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 Text(
                   invoice.priceLabel.isNotEmpty
                       ? invoice.priceLabel
