@@ -47,6 +47,7 @@ class PurchaseInvoice {
     required this.expiryAt,
     required this.orderId,
     required this.platform,
+    this.rawOrderId,
     this.billingPeriod = InvoiceBillingPeriod.unknown,
   });
 
@@ -59,6 +60,7 @@ class PurchaseInvoice {
   final DateTime? transactionAt;
   final DateTime? expiryAt;
   final String? orderId;
+  final String? rawOrderId;
   final String? platform;
   final InvoiceBillingPeriod billingPeriod;
 
@@ -80,6 +82,10 @@ class PurchaseInvoice {
       templateId: templateId,
     );
 
+    final rawOrder = _readString(data['latestOrderId']).isNotEmpty
+        ? _readString(data['latestOrderId'])
+        : _readString(data['transactionId']);
+
     return PurchaseInvoice(
       id: id,
       type: type,
@@ -92,11 +98,8 @@ class PurchaseInvoice {
           _readDate(data['invoiceTransactionDate']) ??
           _readDate(data['transactionDate']),
       expiryAt: _readDate(data['expiryTime']),
-      orderId: _maskOrderId(
-        _readString(data['latestOrderId']).isNotEmpty
-            ? _readString(data['latestOrderId'])
-            : _readString(data['transactionId']),
-      ),
+      orderId: _maskOrderId(rawOrder),
+      rawOrderId: rawOrder.isNotEmpty ? rawOrder : null,
       platform: _readString(data['platform']),
     );
   }
