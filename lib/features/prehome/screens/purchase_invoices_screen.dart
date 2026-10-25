@@ -264,56 +264,34 @@ class _InvoiceBillCard extends StatelessWidget {
           // Receipt Perforation Divider
           const _ReceiptPerforationDivider(),
 
-          // Bill Metadata Grid
+          // Bill Metadata
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
             child: Column(
               children: <Widget>[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: _BillMetaItem(
-                        label: copy.purchaseDate,
-                        value: displayDate == null
-                            ? copy.notAvailable
-                            : _formatDateTime(context, displayDate),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _BillMetaItem(
-                        label: copy.paymentMethod,
-                        value: copy.googlePlayBilling,
-                      ),
-                    ),
-                  ],
+                _ReceiptDetailRow(
+                  label: copy.purchaseDate,
+                  value: displayDate == null
+                      ? copy.notAvailable
+                      : _formatDateTime(context, displayDate),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: _BillMetaItem(
-                        label: copy.billedTo,
-                        value: userAccount,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _BillMetaItem(
-                        label: copy.platform,
-                        value: invoice.platform?.isNotEmpty == true
-                            ? invoice.platform!
-                            : copy.googlePlay,
-                      ),
-                    ),
-                  ],
+                _ReceiptDetailRow(
+                  label: copy.paymentMethod,
+                  value: copy.googlePlayBilling,
+                ),
+                _ReceiptDetailRow(
+                  label: copy.billedTo,
+                  value: userAccount,
+                ),
+                _ReceiptDetailRow(
+                  label: copy.platform,
+                  value: invoice.platform?.isNotEmpty == true
+                      ? invoice.platform!
+                      : copy.googlePlay,
                 ),
                 if (invoice.orderId != null &&
                     invoice.orderId!.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _OrderIdBar(
                     orderId: invoice.orderId!,
                     rawOrderId: invoice.rawOrderId,
@@ -331,185 +309,216 @@ class _InvoiceBillCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Itemized Table
+          // Purchased Item / Subscription Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: <Widget>[
-                  // Table Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          flex: 6,
-                          child: Text(
-                            copy.itemDescription.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            copy.duration.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            copy.amount.toUpperCase(),
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  copy.planDetailsTitle.toUpperCase(),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
                   ),
-                  const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0xFFE2E8F0),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  // Table Content Row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(
-                          flex: 6,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                invoice.planName,
-                                style: const TextStyle(
-                                  color: Color(0xFF0F172A),
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  invoice.planName,
+                                  style: const TextStyle(
+                                    color: Color(0xFF0F172A),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                copy.planBenefits,
-                                style: const TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEEF2FF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFC7D2FE),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Icon(
+                                        Icons.schedule_rounded,
+                                        size: 12,
+                                        color: Color(0xFF4F46E5),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        copy.periodLabel(invoice.billingPeriod),
+                                        style: const TextStyle(
+                                          color: Color(0xFF4338CA),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: Text(
-                              copy.periodLabel(invoice.billingPeriod),
-                              style: const TextStyle(
-                                color: Color(0xFF334155),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              ],
                             ),
                           ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: Text(
-                              invoice.priceLabel.isNotEmpty
-                                  ? invoice.priceLabel
-                                  : copy.priceUnavailable,
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                color: Color(0xFF0F172A),
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w900,
-                              ),
+                          const SizedBox(width: 12),
+                          Text(
+                            invoice.priceLabel.isNotEmpty
+                                ? invoice.priceLabel
+                                : copy.priceUnavailable,
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        copy.planBenefits,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 11,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFE2E8F0),
+                      ),
+                      const SizedBox(height: 10),
+                      // Subtotal row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Text(
+                            copy.subtotal,
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            invoice.priceLabel.isNotEmpty
+                                ? invoice.priceLabel
+                                : copy.priceUnavailable,
+                            style: const TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Tax row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Text(
+                            copy.taxLabel,
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            copy.taxIncludedBadge,
+                            style: const TextStyle(
+                              color: Color(0xFF059669),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
           // Total Paid Section
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        copy.totalPaid,
-                        style: const TextStyle(
-                          color: Color(0xFF334155),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          copy.totalPaid,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        copy.taxInclusive,
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
+                        const SizedBox(height: 2),
+                        Text(
+                          copy.taxInclusive,
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  invoice.priceLabel.isNotEmpty
-                      ? invoice.priceLabel
-                      : copy.priceUnavailable,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                  const SizedBox(width: 12),
+                  Text(
+                    invoice.priceLabel.isNotEmpty
+                        ? invoice.priceLabel
+                        : copy.priceUnavailable,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -785,43 +794,48 @@ class _OrderIdBar extends StatelessWidget {
   }
 }
 
-class _BillMetaItem extends StatelessWidget {
-  const _BillMetaItem({
+class _ReceiptDetailRow extends StatelessWidget {
+  const _ReceiptDetailRow({
     required this.label,
     required this.value,
-    this.maxLines = 2,
   });
 
   final String label;
   final String value;
-  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          maxLines: maxLines,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1148,6 +1162,90 @@ class _PurchaseInvoicesCopy {
     mizo: 'Zat',
     kashmiri: 'رقم',
     ladakhi: 'དངུལ་འབོར།',
+  );
+
+  String get planDetailsTitle => strings.localized(
+    telugu: 'సబ్‌స్క్రిప్షన్ వివరాలు',
+    english: 'Subscription details',
+    hindi: 'सदस्यता विवरण',
+    tamil: 'சந்தா விவரங்கள்',
+    kannada: 'ಚಂದಾದಾರಿಕೆ ವಿವರಗಳು',
+    malayalam: 'സബ്‌സ്‌ക്രിപ്ഷൻ വിവരങ്ങൾ',
+    marathi: 'सदस्यता तपशील',
+    gujarati: 'સબ્સ્ક્રિપ્શન વિગતો',
+    bengali: 'সাবস্ক্রিপশনের বিবরণ',
+    punjabi: 'ਗਾਹਕੀ ਦੇ ਵੇਰਵੇ',
+    odia: 'ସଦସ୍ୟତା ବିବରଣୀ',
+    assamese: 'গ্ৰাহকভুক্তিৰ বিৱৰণ',
+    konkani: 'वर्गणी तपशील',
+    nepali: 'सदस्यता विवरण',
+    meitei: 'সবস্ক্রিপ্সন মরোল',
+    mizo: 'Subscription Details',
+    kashmiri: 'سبسکرپشن تفصیٖل',
+    ladakhi: 'མངགས་ཉོའི་ཞིབ་ཕྲ།',
+  );
+
+  String get subtotal => strings.localized(
+    telugu: 'ఉపమొత్తం (Subtotal)',
+    english: 'Subtotal',
+    hindi: 'उप-योग (Subtotal)',
+    tamil: 'கூட்டுத்தொகை (Subtotal)',
+    kannada: 'ಉಪಮೊತ್ತ (Subtotal)',
+    malayalam: 'ഉപതുക (Subtotal)',
+    marathi: 'उप-एकूण (Subtotal)',
+    gujarati: 'પેટા સરવાળો (Subtotal)',
+    bengali: 'উপমোট (Subtotal)',
+    punjabi: 'ਉਪ-ਕੁੱਲ (Subtotal)',
+    odia: 'ଉପମୋଟ୍ (Subtotal)',
+    assamese: 'উপমুঠ (Subtotal)',
+    konkani: 'उप-एकूण (Subtotal)',
+    nepali: 'उप-कुल (Subtotal)',
+    meitei: 'সবতোতল (Subtotal)',
+    mizo: 'Subtotal',
+    kashmiri: 'سَب ٹوٹل (Subtotal)',
+    ladakhi: 'བསྡོམས་ཐོ་ཕྲ་མོ། (Subtotal)',
+  );
+
+  String get taxLabel => strings.localized(
+    telugu: 'వర్తించే పన్ను (GST)',
+    english: 'Applicable Tax (GST)',
+    hindi: 'लागू कर (GST)',
+    tamil: 'பொருந்தக்கூடிய வரி (GST)',
+    kannada: 'ಅನ್ವಯವಾಗುವ ತೆರಿಗೆ (GST)',
+    malayalam: 'ബാധകമായ നികുതി (GST)',
+    marathi: 'लागू कर (GST)',
+    gujarati: 'લાગુ કર (GST)',
+    bengali: 'প্রযোজ্য কর (GST)',
+    punjabi: 'ਲਾਗੂ ਟੈਕਸ (GST)',
+    odia: 'ପ୍ରଯୁଜ୍ୟ ଟ୍ୟାକ୍ସ (GST)',
+    assamese: 'প্ৰଯোজ্য কৰ (GST)',
+    konkani: 'लागू कर (GST)',
+    nepali: 'लागू कर (GST)',
+    meitei: 'চৎনবা তেক্স (GST)',
+    mizo: 'Chhiah (GST)',
+    kashmiri: 'لٲگوٗ ٹیکس (GST)',
+    ladakhi: 'ཁྲལ་ (GST)',
+  );
+
+  String get taxIncludedBadge => strings.localized(
+    telugu: 'ధరలోనే ఉంది (Included)',
+    english: 'Included in price',
+    hindi: 'कीमत में शामिल (Included)',
+    tamil: 'விலையில் அடங்கும் (Included)',
+    kannada: 'ಬೆಲೆಯಲ್ಲಿ ಸೇರಿದೆ (Included)',
+    malayalam: 'വിലയിൽ ഉൾപ്പെടുത്തിയിട്ടുണ്ട് (Included)',
+    marathi: 'किंमतीत समाविष्ट (Included)',
+    gujarati: 'કિંમતમાં સામેલ (Included)',
+    bengali: 'দামে অন্তর্ভুক্ত (Included)',
+    punjabi: 'ਕੀਮਤ ਵਿੱਚ ਸ਼ਾਮਲ (Included)',
+    odia: 'ମୂଲ୍ୟରେ ଅନ୍ତର୍ଭୁକ୍ତ (Included)',
+    assamese: 'মূল্যত অন্তৰ্ভুক্ত (Included)',
+    konkani: 'किमतींत आस्पावलां (Included)',
+    nepali: 'मूल्यमा समावेश (Included)',
+    meitei: 'মমলদা য়াওরে (Included)',
+    mizo: 'Manah a tel sa',
+    kashmiri: 'قیمتس مَنٛز شٲمِل',
+    ladakhi: 'རིན་གོང་ནང་ཚུད་ཡོད།',
   );
 
   String get totalPaid => strings.localized(
