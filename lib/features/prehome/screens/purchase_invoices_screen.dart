@@ -189,6 +189,8 @@ class _InvoiceBillCard extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final userAccount =
         user?.email ?? user?.phoneNumber ?? copy.verifiedAccount;
+    final hasPrice = invoice.priceLabel.trim().isNotEmpty;
+    final displayPrice = hasPrice ? invoice.priceLabel : '—';
 
     return Container(
       decoration: BoxDecoration(
@@ -388,9 +390,7 @@ class _InvoiceBillCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            invoice.priceLabel.isNotEmpty
-                                ? invoice.priceLabel
-                                : copy.priceUnavailable,
+                            displayPrice,
                             style: const TextStyle(
                               color: Color(0xFF0F172A),
                               fontSize: 16,
@@ -429,9 +429,7 @@ class _InvoiceBillCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            invoice.priceLabel.isNotEmpty
-                                ? invoice.priceLabel
-                                : copy.priceUnavailable,
+                            displayPrice,
                             style: const TextStyle(
                               color: Color(0xFF334155),
                               fontSize: 12,
@@ -454,9 +452,11 @@ class _InvoiceBillCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            copy.taxIncludedBadge,
-                            style: const TextStyle(
-                              color: Color(0xFF059669),
+                            hasPrice ? copy.taxIncludedBadge : '—',
+                            style: TextStyle(
+                              color: hasPrice
+                                  ? const Color(0xFF059669)
+                                  : const Color(0xFF64748B),
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                             ),
@@ -496,7 +496,9 @@ class _InvoiceBillCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          copy.taxInclusive,
+                          hasPrice
+                              ? copy.taxInclusive
+                              : copy.priceUnavailable,
                           style: const TextStyle(
                             color: Color(0xFF64748B),
                             fontSize: 10.5,
@@ -508,9 +510,7 @@ class _InvoiceBillCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    invoice.priceLabel.isNotEmpty
-                        ? invoice.priceLabel
-                        : copy.priceUnavailable,
+                    displayPrice,
                     style: const TextStyle(
                       color: Color(0xFF0F172A),
                       fontSize: 22,
