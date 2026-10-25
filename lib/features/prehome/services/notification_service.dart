@@ -234,9 +234,10 @@ class NotificationService {
     }
 
     final dataResolved = await _resolveMessageText(message.data);
-    final resolved = await _personalizeWelcomeNotificationText(
+    final resolved = await _personalizeNotificationText(
       categoryKey: categoryKey,
       userName: userName,
+      data: message.data,
       text: _ResolvedNotificationText(
         title: dataResolved.title.isNotEmpty
             ? dataResolved.title
@@ -1145,11 +1146,7 @@ class NotificationService {
           ? titleKey
           : bodyKey,
     );
-    if (category.isEmpty ||
-        category == 'morning' ||
-        category == 'afternoon' ||
-        category == 'night' ||
-        category == 'welcome') {
+    if (category.isEmpty || category == 'welcome') {
       return null;
     }
     final copy = _categoryNotificationTemplate(language);
@@ -1180,6 +1177,9 @@ class NotificationService {
     }
     if (value == 'good_night' || value == 'night' || value.contains('night_')) {
       return 'night';
+    }
+    if (value == 'tips' || value == 'tip' || value.contains('tips') || value.contains('health')) {
+      return 'tips';
     }
     if (value == 'motivational' ||
         value == 'motivation' ||
@@ -1216,6 +1216,9 @@ class NotificationService {
     if (language == AppLanguage.telugu) {
       return (
         titles: <String, String>{
+          'morning': 'శుభోదయం',
+          'night': 'శుభ రాత్రి',
+          'tips': 'డైలీ టిప్స్ పోస్టర్ సిద్ధం',
           'motivation':
               '\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
           'evening':
@@ -1234,6 +1237,9 @@ class NotificationService {
               '\u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
         },
         labels: <String, String>{
+          'morning': 'గుడ్ మార్నింగ్',
+          'night': 'గుడ్ నైట్',
+          'tips': 'డైలీ టిప్స్',
           'motivation':
               '\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D',
           'evening': '\u0C38\u0C3E\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C02',
@@ -1642,6 +1648,9 @@ class NotificationService {
   }
 
   static const Map<String, String> _defaultCategoryTitles = {
+    'morning': 'Good Morning',
+    'night': 'Good Night',
+    'tips': 'Daily Tips Poster Ready',
     'motivation': 'Motivational poster ready',
     'evening': 'Good Evening',
     'devotional': 'Devotional poster ready',
@@ -1653,6 +1662,9 @@ class NotificationService {
   };
 
   static const Map<String, String> _defaultCategoryLabels = {
+    'morning': 'good morning',
+    'night': 'good night',
+    'tips': 'daily tips',
     'motivation': 'motivational',
     'evening': 'evening',
     'devotional': 'devotional',
@@ -1963,31 +1975,161 @@ class NotificationService {
     return _sanitizeNotificationText(value);
   }
 
-  static Future<_ResolvedNotificationText> _personalizeWelcomeNotificationText({
+  static Future<_ResolvedNotificationText> _personalizeNotificationText({
     required String categoryKey,
     required String userName,
+    required Map<String, dynamic> data,
     required _ResolvedNotificationText text,
   }) async {
-    if (categoryKey.trim().toLowerCase() != 'welcome') {
-      return text;
-    }
-    final name = userName.trim();
-    if (name.isEmpty) {
-      return text;
-    }
-    final language = (await AppFlowService.loadSnapshot()).language;
-    final suffix = switch (language.supportedUiLanguage) {
-      SupportedUiLanguage.telugu => '$name గారు, ',
-      SupportedUiLanguage.hindi => '$name जी, ',
-      _ => '$name, ',
-    };
-    if (text.body.trim().startsWith(name)) {
-      return text;
-    }
+    final String name = userName.trim();
+    final AppFlowSnapshot flowSnapshot = await AppFlowService.loadSnapshot();
+    final AppLanguage language = flowSnapshot.languageSelected
+        ? flowSnapshot.language
+        : AppLanguage.telugu;
+    final String normalizedCategory = _normalizeReminderCategory(categoryKey);
+
+    // If dynamic event, check for event names
+    final List<String> eventNames = _readDataValue(data, 'eventNames')
+        .split('|')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    final String? dynamicEventLabel = eventNames.isNotEmpty
+        ? _joinDynamicEventNames(eventNames, language)
+        : null;
+
+    final String label = dynamicEventLabel ??
+        categoryLabelForLanguage(
+          category: normalizedCategory,
+          language: language,
+        );
+
+    final String personalizedBody = formatPersonalizedNotificationBody(
+      language: language,
+      userName: name,
+      label: label,
+      fallbackBody: text.body,
+    );
+
     return _ResolvedNotificationText(
       title: text.title,
-      body: '$suffix${text.body}',
+      body: personalizedBody,
     );
+  }
+
+  @visibleForTesting
+  static String categoryLabelForLanguage({
+    required String category,
+    required AppLanguage language,
+  }) {
+    if (language == AppLanguage.telugu) {
+      const teluguLabels = <String, String>{
+        'morning': 'గుడ్ మార్నింగ్',
+        'night': 'గుడ్ నైట్',
+        'tips': 'డైలీ టిప్స్',
+        'weekday': 'ఈరోజు ప్రత్యేక',
+        'bible': 'బైబిల్',
+        'islam': 'ఇస్లామిక్',
+        'motivation': 'మోటివేషన్',
+        'jokes': 'జోక్స్',
+        'devotional': 'భక్తి',
+        'evening': 'సాయంత్రం',
+        'afternoon': 'మధ్యాహ్నం',
+        'generic': 'కొత్త',
+      };
+      return teluguLabels[category] ?? teluguLabels['generic']!;
+    }
+    final bucket = _localizedCategoryNotificationBuckets(language);
+    return bucket.labels[category] ?? bucket.labels['generic'] ?? 'new';
+  }
+
+  @visibleForTesting
+  static String formatPersonalizedNotificationBody({
+    required AppLanguage language,
+    required String userName,
+    required String label,
+    required String fallbackBody,
+  }) {
+    final bool hasName = userName.trim().isNotEmpty;
+    final String name = userName.trim();
+
+    if (label.isNotEmpty && label != 'new' && label != 'కొత్త') {
+      return switch (language) {
+        AppLanguage.telugu => hasName
+            ? '$name గారు, మీ $label పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది.'
+            : 'మీ $label పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది.',
+        AppLanguage.english => hasName
+            ? '$name, your $label poster is ready to share.'
+            : 'Your $label poster is ready to share.',
+        AppLanguage.hindi => hasName
+            ? '$name जी, आपका $label पोस्टर शेयर करने के लिए तैयार है।'
+            : 'आपका $label पोस्टर शेयर करने के लिए तैयार है।',
+        AppLanguage.tamil => hasName
+            ? '$name அவர்களே, உங்கள் $label போஸ்டர் பகிர தயாராக உள்ளது.'
+            : 'உங்கள் $label போஸ்டர் பகிர தயாராக உள்ளது.',
+        AppLanguage.kannada => hasName
+            ? '$name ಅವರೇ, ನಿಮ್ಮ $label ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.'
+            : 'ನಿಮ್ಮ $label ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.',
+        AppLanguage.malayalam => hasName
+            ? '$name, നിങ്ങളുടെ $label പോസ്റ്റർ പങ്കിടാൻ തയ്യാറാണ്.'
+            : 'നിങ്ങളുടെ $label പോസ്റ്റർ പങ്കിടാൻ തയ്യാറാണ്.',
+        AppLanguage.marathi => hasName
+            ? '$name जी, तुमचे $label पोस्टर शेअर करण्यासाठी तयार आहे.'
+            : 'तुमचे $label पोस्टर शेअर करण्यासाठी तयार आहे.',
+        AppLanguage.gujarati => hasName
+            ? '$name જી, તમારું $label પોસ્ટર શેર કરવા માટે તૈયાર છે.'
+            : 'તમારું $label પોસ્ટર શેર કરવા માટે તૈયાર છે.',
+        AppLanguage.bengali => hasName
+            ? '$name, আপনার $label পোস্টার শেয়ার করার জন্য প্রস্তুত।'
+            : 'আপনার $label পোস্টার শেয়ার করার জন্য প্রস্তুত।',
+        AppLanguage.punjabi => hasName
+            ? '$name ਜੀ, ਤੁਹਾਡਾ $label ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।'
+            : 'ਤੁਹਾਡਾ $label ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।',
+        AppLanguage.odia => hasName
+            ? '$name ଆଜ୍ଞା, ଆପଣଙ୍କ $label ପୋଷ୍ଟର ଶେୟାର କରିବାକୁ ପ୍ରସ୍ତୁତ ଅଛି।'
+            : 'ଆପଣଙ୍କ $label ପୋଷ୍ଟର ଶେୟାର କରିବାକୁ ପ୍ରସ୍ତୁତ ଅଛି।',
+        AppLanguage.assamese => hasName
+            ? '$name ডাঙৰীয়া, আপোনাৰ $label পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।'
+            : 'আপোনাৰ $label পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।',
+        AppLanguage.konkani => hasName
+            ? '$name, तुमचें $label पोस्टर शेअर करपाक तयार आसा.'
+            : 'तुमचें $label पोस्टर शेअर करपाक तयार आसा.',
+        AppLanguage.nepali => hasName
+            ? '$name जी, तपाईंको $label पोस्टर शेयर गर्न तयार छ।'
+            : 'तपाईंको $label पोस्टर शेयर गर्न तयार छ।',
+        AppLanguage.meitei => hasName
+            ? '$name, na-gi $label poster share toubada ready oire.'
+            : 'Na-gi $label poster share toubada ready oire.',
+        AppLanguage.mizo => hasName
+            ? '$name, i $label poster share turin a peih tawh e.'
+            : 'I $label poster share turin a peih tawh e.',
+        AppLanguage.kashmiri => hasName
+            ? '$name جناب, تہٕنٛز $label پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھُ۔'
+            : 'تہٕنٛز $label پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھُ।',
+        AppLanguage.ladakhi => hasName
+            ? '$name, nye $label poster share chos-la ready in.'
+            : 'Nye $label poster share chos-la ready in.',
+      };
+    }
+
+    if (!hasName || fallbackBody.trim().startsWith(name)) {
+      return fallbackBody;
+    }
+    final prefix = switch (language) {
+      AppLanguage.telugu => '$name గారు, ',
+      AppLanguage.hindi => '$name जी, ',
+      AppLanguage.tamil => '$name அவர்களே, ',
+      AppLanguage.kannada => '$name ಅವರೇ, ',
+      AppLanguage.marathi => '$name जी, ',
+      AppLanguage.gujarati => '$name જી, ',
+      AppLanguage.punjabi => '$name ਜੀ, ',
+      AppLanguage.odia => '$name ଆଜ୍ଞା, ',
+      AppLanguage.assamese => '$name ডাঙৰীয়া, ',
+      AppLanguage.nepali => '$name जी, ',
+      AppLanguage.kashmiri => '$name جناب, ',
+      _ => '$name, ',
+    };
+    return '$prefix$fallbackBody';
   }
 
   static String _readDataValue(Map<String, dynamic> data, String key) {

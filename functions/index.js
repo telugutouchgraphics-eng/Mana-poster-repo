@@ -1601,6 +1601,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["శుభ రాత్రి", `${name} గారు, మీ గుడ్ నైట్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       motivation: ["మోటివేషన్ టైమ్", `${name} గారు, మీ మోటివేషన్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       jokes: ["జోక్స్ టైమ్", `${name} గారు, మీ జోక్స్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      tips: ["డైలీ టిప్స్", `${name} గారు, మీ డైలీ టిప్స్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       dynamic_event: [eventTitle || "ఈవెంట్ రిమైండర్", `${name} గారు, ${eventTitle || "ఈవెంట్"} ${timing === "tomorrow" ? "రేపు" : "ఈ రోజు"} ఉంది. పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
     },
     hindi: {
@@ -1611,6 +1612,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["शुभ रात्रि", `${name} जी, आपका गुड नाइट पोस्टर शेयर करने के लिए तैयार है।`],
       motivation: ["मोटिवेशन टाइम", `${name} जी, आपका मोटिवेशन पोस्टर शेयर करने के लिए तैयार है।`],
       jokes: ["जोक्स टाइम", `${name} जी, आपका जोक्स पोस्टर शेयर करने के लिए तैयार है।`],
+      tips: ["डेली टिप्स", `${name} जी, आपका डेली टिप्स पोस्टर शेयर करने के लिए तैयार है।`],
       dynamic_event: [eventTitle || "इवेंट रिमाइंडर", `${name} जी, ${eventTitle || "इवेंट"} ${timing === "tomorrow" ? "कल" : "आज"} है। पोस्टर शेयर करने के लिए तैयार है।`],
     },
     english: {
@@ -1621,6 +1623,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["Good Night", `${name}, your good night poster is ready to share.`],
       motivation: ["Motivation Time", `${name}, your motivational poster is ready to share.`],
       jokes: ["Jokes Time", `${name}, your jokes poster is ready to share.`],
+      tips: ["Daily Tips", `${name}, your daily tips poster is ready to share.`],
       dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} is ${timingText}. Your poster is ready to share.`],
     },
     tamil: {
@@ -1630,6 +1633,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["இரவு வணக்கம்", `${name} அவர்களே, உங்கள் குட் நைட் போஸ்டர் பகிர தயாராக உள்ளது.`],
       motivation: ["மோட்டிவேஷன் நேரம்", `${name} அவர்களே, உங்கள் மோட்டிவேஷன் போஸ்டர் பகிர தயாராக உள்ளது.`],
       jokes: ["ஜோக்ஸ் நேரம்", `${name} அவர்களே, உங்கள் ஜோக்ஸ் போஸ்டர் பகிர தயாராக உள்ளது.`],
+      tips: ["தினசரி டிப்ஸ்", `${name} அவர்களே, உங்கள் தினசரி டிப்ஸ் போస్టர் பகிர தயாராக உள்ளது.`],
       dynamic_event: [eventTitle || "நிகழ்வு நினைவூட்டல்", `${name} அவர்களே, ${eventTitle || "நிகழ்வு"} ${timing === "tomorrow" ? "நாளை" : "இன்று"} உள்ளது. போஸ்டர் பகிர தயாராக உள்ளது.`],
     },
     kannada: {
@@ -1639,6 +1643,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["ಶುಭ ರಾತ್ರಿ", `${name} ಅವರೇ, ನಿಮ್ಮ ಗುಡ್ ನೈಟ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
       motivation: ["ಮೋಟಿವೇಶನ್ ಸಮಯ", `${name} ಅವರೇ, ನಿಮ್ಮ ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
       jokes: ["ಜೋಕ್ಸ್ ಸಮಯ", `${name} ಅವರೇ, ನಿಮ್ಮ ಜೋಕ್ಸ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      tips: ["ದೈನಂದಿನ ಟಿಪ್ಸ್", `${name} ಅವರೇ, ನಿಮ್ಮ ದೈನಂದಿನ ಟಿಪ್ಸ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
       dynamic_event: [eventTitle || "ಈವೆಂಟ್ ರಿಮೈಂಡರ್", `${name} ಅವರೇ, ${eventTitle || "ಈವೆಂಟ್"} ${timing === "tomorrow" ? "ನಾಳೆ" : "ಇಂದು"} ಇದೆ. ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
     },
     malayalam: {
@@ -1648,6 +1653,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["ശുഭ രാത്രി", `${name}, നിങ്ങളുടെ ഗുഡ് നൈറ്റ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
       motivation: ["മോട്ടിവേഷൻ സമയം", `${name}, നിങ്ങളുടെ മോട്ടിവേഷൻ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
       jokes: ["ജോക്സ് സമയം", `${name}, നിങ്ങളുടെ ജോക്സ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      tips: ["ഡെയ്‌ലി ടിപ്‌സ്", `${name}, നിങ്ങളുടെ ഡെയ്‌ലി ടിപ്‌സ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
       dynamic_event: [eventTitle || "ഇവന്റ് റിമൈൻഡർ", `${name}, ${eventTitle || "ഇവന്റ്"} ${timing === "tomorrow" ? "നാളെ" : "ഇന്ന്"} ആണ്. പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
     },
     assamese: {
@@ -1657,6 +1663,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["শুভ ৰাতি", `${name}, আপোনাৰ গুড নাইট পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
       motivation: ["মোটিভেশন টাইম", `${name}, আপোনাৰ মোটিভেশন পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
       jokes: ["জোকছ টাইম", `${name}, আপোনাৰ জোকছ পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      tips: ["দৈনিক টিপছ", `${name}, আপোনাৰ দৈনিক টিপছ পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
       dynamic_event: [eventTitle || "ইভেন্ট ৰিমাইন্ডাৰ", `${name}, ${eventTitle || "ইভেন্ট"} ${timing === "tomorrow" ? "কাইলৈ" : "আজি"} আছে। পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
     },
     konkani: {
@@ -1666,6 +1673,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["शुभ रात", `${name}, तुमचो गुड नाइट पोस्टर शेअर करपाक तयार आसा.`],
       motivation: ["मोटिवेशन टाइम", `${name}, तुमचो मोटिवेशन पोस्टर शेअर करपाक तयार आसा.`],
       jokes: ["जोक्स टाइम", `${name}, तुमचो जोक्स पोस्टर शेअर करपाक तयार आसा.`],
+      tips: ["दिसपट्टे टिप्स", `${name}, तुमचो दिसपट्टे टिप्स पोस्टर शेअर करपाक तयार आसा.`],
       dynamic_event: [eventTitle || "इव्हेंट रिमाइंडर", `${name}, ${eventTitle || "इव्हेंट"} ${timing === "tomorrow" ? "फाल्या" : "आयज"} आसा. पोस्टर शेअर करपाक तयार आसा.`],
     },
     gujarati: {
@@ -1684,6 +1692,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["शुभ रात्री", `${name}, तुमचा गुड नाईट पोस्टर शेअर करण्यासाठी तयार आहे.`],
       motivation: ["मोटिवेशन टाइम", `${name}, तुमचा मोटिवेशन पोस्टर शेअर करण्यासाठी तयार आहे.`],
       jokes: ["जोक्स टाइम", `${name}, तुमचा जोक्स पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      tips: ["डेली टिप्स", `${name}, तुमचा डेली टिप्स पोस्टर शेअर करण्यासाठी तयार आहे.`],
       dynamic_event: [eventTitle || "इव्हेंट रिमाइंडर", `${name}, ${eventTitle || "इव्हेंट"} ${timing === "tomorrow" ? "उद्या" : "आज"} आहे. पोस्टर शेअर करण्यासाठी तयार आहे.`],
     },
     meitei: {
@@ -1693,6 +1702,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["গুড নাইট", `${name}, নহাক্কী good night poster share তৌনবা ready ওইরে.`],
       motivation: ["Motivation Time", `${name}, নহাক্কী motivation poster share তৌনবা ready ওইরে.`],
       jokes: ["Jokes Time", `${name}, নহাক্কী jokes poster share তৌনবা ready ওইরে.`],
+      tips: ["Daily Tips", `${name}, na-gi daily tips poster share toubada ready oire.`],
       dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "হয়েং" : "ঙসি"} লৈ. Poster share তৌনবা ready ওইরে.`],
     },
     mizo: {
@@ -1702,6 +1712,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["Good Night", `${name}, i good night poster share tur a inpeih tawh.`],
       motivation: ["Motivation Time", `${name}, i motivation poster share tur a inpeih tawh.`],
       jokes: ["Jokes Time", `${name}, i jokes poster share tur a inpeih tawh.`],
+      tips: ["Daily Tips", `${name}, i daily tips poster share tur a inpeih tawh.`],
       dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "naktukah" : "vawiin"} a awm. Poster share tur a inpeih tawh.`],
     },
     odia: {
@@ -1711,6 +1722,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["ଶୁଭ ରାତ୍ରି", `${name}, ଆପଣଙ୍କ ଗୁଡ୍ ନାଇଟ୍ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
       motivation: ["ମୋଟିଭେସନ ଟାଇମ", `${name}, ଆପଣଙ୍କ ମୋଟିଭେସନ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
       jokes: ["ଜୋକ୍ସ ଟାଇମ", `${name}, ଆପଣଙ୍କ ଜୋକ୍ସ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      tips: ["ଦୈନିକ ଟିପ୍ସ", `${name}, ଆପଣଙ୍କ ଦୈନିକ ଟିପ୍ସ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
       dynamic_event: [eventTitle || "ଇଭେଣ୍ଟ ରିମାଇଣ୍ଡର", `${name}, ${eventTitle || "ଇଭେଣ୍ଟ"} ${timing === "tomorrow" ? "ଆସନ୍ତାକାଲି" : "ଆଜି"} ଅଛି। ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
     },
     punjabi: {
@@ -1720,6 +1732,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["ਸ਼ੁਭ ਰਾਤਰੀ", `${name}, ਤੁਹਾਡਾ ਗੁੱਡ ਨਾਈਟ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
       motivation: ["ਮੋਟੀਵੇਸ਼ਨ ਟਾਈਮ", `${name}, ਤੁਹਾਡਾ ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
       jokes: ["ਜੋਕਸ ਟਾਈਮ", `${name}, ਤੁਹਾਡਾ ਜੋਕਸ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      tips: ["ਡੇਲੀ ਟਿਪਸ", `${name}, ਤੁਹਾਡਾ ਡੇਲੀ ਟਿਪਸ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
       dynamic_event: [eventTitle || "ਇਵੈਂਟ ਰਿਮਾਈਂਡਰ", `${name}, ${eventTitle || "ਇਵੈਂਟ"} ${timing === "tomorrow" ? "ਕੱਲ੍ਹ" : "ਅੱਜ"} ਹੈ। ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
     },
     nepali: {
@@ -1729,6 +1742,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["शुभ रात्री", `${name}, तपाईंको गुड नाइट पोस्टर शेयर गर्न तयार छ।`],
       motivation: ["मोटिभेसन टाइम", `${name}, तपाईंको मोटिभेसन पोस्टर शेयर गर्न तयार छ।`],
       jokes: ["जोक्स टाइम", `${name}, तपाईंको जोक्स पोस्टर शेयर गर्न तयार छ।`],
+      tips: ["दैनिक टिप्स", `${name}, तपाईंको दैनिक टिप्स पोस्टर शेयर गर्न तयार छ।`],
       dynamic_event: [eventTitle || "इभेन्ट रिमाइन्डर", `${name}, ${eventTitle || "इभेन्ट"} ${timing === "tomorrow" ? "भोलि" : "आज"} छ। पोस्टर शेयर गर्न तयार छ।`],
     },
     bengali: {
@@ -1738,6 +1752,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["শুভ রাত্রি", `${name}, আপনার গুড নাইট পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
       motivation: ["মোটিভেশন টাইম", `${name}, আপনার মোটিভেশন পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
       jokes: ["জোকস টাইম", `${name}, আপনার জোকস পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      tips: ["ডেইলি টিপস", `${name}, আপনার ডেইলি টিপস পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
       dynamic_event: [eventTitle || "ইভেন্ট রিমাইন্ডার", `${name}, ${eventTitle || "ইভেন্ট"} ${timing === "tomorrow" ? "আগামীকাল" : "আজ"} আছে। পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
     },
     kashmiri: {
@@ -1747,6 +1762,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["گڈ نائٹ", `${name}, توہند گڈ نائٹ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
       motivation: ["موٹیویشن ٹائم", `${name}, توہند موٹیویشن پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
       jokes: ["جوکس ٹائم", `${name}, توہند جوکس پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      tips: ["ڈیلی ٹپس", `${name}, توہند ڈیلی ٹپس پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
       dynamic_event: [eventTitle || "ایونٹ ریمائنڈر", `${name}, ${eventTitle || "ایونٹ"} ${timing === "tomorrow" ? "پگاہ" : "از"} چھ۔ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
     },
     ladakhi: {
@@ -1756,6 +1772,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       night: ["མཚན་མོ་བདེ་ལེགས", `${name}, ཁྱེད་ཀྱི་གུད་ནཱའིཊ་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
       motivation: ["Motivation Time", `${name}, ཁྱེད་ཀྱི་མོ་ཊི་ཝེ་ཤན་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
       jokes: ["Jokes Time", `${name}, ཁྱེད་ཀྱི་ཇོཀས་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      tips: ["ཉིན་རེའི་ཐབས་ལམ", `${name}, ཁྱེད་ཀྱི་ཉིན་རེའི་ཐབས་ལམ་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
       dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "སང་ཉིན" : "དེ་རིང"} ཡོད། པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
     },
   };
@@ -2643,7 +2660,7 @@ function categorySpecificReminderCopy(kind, language, userName) {
   const isWeekday = category.startsWith("weekday_") ||
       normalizedKind.includes("weekday");
   const copyKey = isWeekday ? "weekday" : category;
-  if (!["devotional", "weekday", "bible", "islam"].includes(copyKey)) {
+  if (!["devotional", "weekday", "bible", "islam", "tips"].includes(copyKey)) {
     return null;
   }
 
@@ -7454,10 +7471,10 @@ exports.dailyGoodMorningReminder0700 = onSchedule(
     },
 );
 
-exports.dailyMotivationReminder1030 = onSchedule(
+exports.dailyTipsReminder1300 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "0 10 * * *",
+      schedule: "0 13 * * *",
       timeZone: "Asia/Kolkata",
       memory: "256MiB",
       timeoutSeconds: 120,
@@ -7465,77 +7482,13 @@ exports.dailyMotivationReminder1030 = onSchedule(
     async () => {
       await sendDailyPersonalizedReminder({
         keywords: [
-          "motivational",
-          "motivation",
-          "good thoughts",
-          "life advice",
-          "inspiration",
+          "tips",
+          "daily tips",
+          "health tips",
+          "life tips",
         ],
-        categoryKey: "motivation",
-        reminderSeed: "1000",
-      });
-    },
-);
-
-exports.dailyGoodAfternoonReminder1200 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "0 12 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "256MiB",
-      timeoutSeconds: 120,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-          "good afternoon",
-          "afternoon",
-          "madhyahna",
-        ],
-        categoryKey: "afternoon",
-        reminderSeed: "1200",
-      });
-    },
-);
-
-exports.dailyGoodAfternoonReminder1315 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "15 13 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "256MiB",
-      timeoutSeconds: 120,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-          "good afternoon",
-          "afternoon",
-          "madhyahna",
-        ],
-        categoryKey: "afternoon",
-        reminderSeed: "1315",
-      });
-    },
-);
-
-exports.dailyGoodEveningReminder1800 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "0 18 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "256MiB",
-      timeoutSeconds: 120,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-          "good evening",
-          "evening",
-          "sayankalam",
-        ],
-        categoryKey: "evening",
-        reminderSeed: "1800",
+        categoryKey: "tips",
+        reminderSeed: "1300",
       });
     },
 );
@@ -7561,10 +7514,10 @@ exports.dailyGoodNightReminder2100 = onSchedule(
     },
 );
 
-exports.dailyReligionReminder0815 = onSchedule(
+exports.dailyReligionReminder0800 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "15 8 * * *",
+      schedule: "0 8 * * *",
       timeZone: "Asia/Kolkata",
       memory: "512MiB",
       timeoutSeconds: 300,
@@ -7608,6 +7561,17 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
         return;
       }
 
+      // Sort today's events: highest priority festivals first
+      todayEvents.sort((a, b) => {
+        const prioA = Number(a && a.priority) || 0;
+        const prioB = Number(b && b.priority) || 0;
+        if (prioB !== prioA) {
+          return prioB - prioA;
+        }
+        const typeRank = (t) => t === "festival" ? 3 : (t === "jayanthi" ? 2 : 1);
+        return typeRank(b?.type) - typeRank(a?.type);
+      });
+
       const topicGroups = new Map();
       for (const event of todayEvents) {
         const eventTitle = String(event && event.title ? event.title : "").trim();
@@ -7616,7 +7580,11 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
         }
         const topics = dynamicEventBroadcastTopics(event);
         for (const topic of topics) {
-          const sentKey = `${dayKey}-${safeNotificationMetricKey(topic)}-${safeNotificationMetricKey(event.id || eventTitle)}`;
+          // STRICT RULE: Only ONE top-priority event per topic/region per day!
+          if (topicGroups.has(topic)) {
+            continue;
+          }
+          const sentKey = `${dayKey}-${safeNotificationMetricKey(topic)}`;
           const sentRef = db.collection("notificationJobs")
               .doc("dynamicEventReminders0730")
               .collection("sent")
@@ -7643,25 +7611,19 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
             });
             continue;
           }
-          const group = topicGroups.get(topic) || {events: [], imageUrl: ""};
-          group.events.push({event, sentRef});
-          if (!group.imageUrl) {
-            group.imageUrl = imageUrl;
-          }
-          topicGroups.set(topic, group);
+          topicGroups.set(topic, {event, sentRef, imageUrl});
         }
       }
 
       for (const [topic, group] of topicGroups.entries()) {
-        const eventNames = notificationEventNameList(
-            group.events.map((item) => item.event),
-        );
-        if (eventNames.length === 0 || !group.imageUrl) {
+        const event = group.event;
+        const eventTitle = String(event && event.title ? event.title : "").trim();
+        if (!eventTitle || !group.imageUrl) {
           continue;
         }
         const topicRegion = topic.startsWith("region_") ? topic.replace(/^region_/, "") : "";
         const regionInfo = regionInfoForId(topicRegion);
-        const copy = dynamicEventBroadcastCopy(eventNames, regionInfo.lang);
+        const copy = dynamicEventBroadcastCopy([eventTitle], regionInfo.lang);
         try {
           await sendReminderToTopic({
             topic,
@@ -7678,16 +7640,16 @@ exports.dailyDynamicEventReminder0730 = onSchedule(
             openKind: "event",
             languageCode: regionInfo.langCode,
             extraData: {
-              eventNames: eventNames.join("|"),
-              eventCount: String(eventNames.length),
+              eventNames: eventTitle,
+              eventCount: "1",
             },
           });
-          await Promise.all(group.events.map((item) => item.sentRef.set({
-            eventId: String(item.event.id || ""),
-            eventTitle: String(item.event.title || ""),
+          await group.sentRef.set({
+            eventId: String(event.id || ""),
+            eventTitle,
             topic,
             sentAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true})));
+          }, {merge: true});
           await recordAutomatedPushNotificationHistory({
             title: copy.title,
             message: copy.body,
