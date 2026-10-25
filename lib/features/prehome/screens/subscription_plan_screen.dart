@@ -47,6 +47,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool _didAutoStartPurchase = false;
   bool _didAutoTriggerRestore = false;
   bool _exitPromptAttempted = false;
+  int _selectedPlanIndex = 0;
 
   Future<void> _handleBackPress() async {
     if (_exitPromptAttempted || !mounted) {
@@ -782,6 +783,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     };
   }
 
+  // ignore: unused_element
   String _statusLine() {
     if (_loading) {
       return _t(
@@ -895,6 +897,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     );
   }
 
+  // ignore: unused_element
   String? _subscriptionStartLine() {
     final startDate = _backendResult?.startDate;
     if (startDate == null) {
@@ -1021,6 +1024,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     return DateTime(year, month + 1, 0).day;
   }
 
+  // ignore: unused_element
   Color get _statusColor {
     if (_isSubscriptionActive) {
       return const Color(0xFF15803D);
@@ -1031,6 +1035,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     return const Color(0xFF64748B);
   }
 
+  // ignore: unused_element
   Color get _statusBackgroundColor {
     if (_isSubscriptionActive) {
       return const Color(0xFFF0FDF4);
@@ -1041,6 +1046,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     return const Color(0xFFF8FAFC);
   }
 
+  // ignore: unused_element
   Color get _statusBorderColor {
     if (_isSubscriptionActive) {
       return const Color(0xFF86EFAC);
@@ -1883,6 +1889,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     malayalam: 'നിങ്ങളുടെ പ്ലാൻ വിവരങ്ങൾ',
   );
 
+  // ignore: unused_element
   String get _appProTitle => _t(
     telugu: 'App Pro',
     english: 'App Pro',
@@ -1892,6 +1899,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     malayalam: 'App Pro',
   );
 
+  // ignore: unused_element
   String get _appPlanTitleClean => _t(
     telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
     english: 'Subscription Plan',
@@ -1913,6 +1921,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Subscription plan',
   );
 
+  // ignore: unused_element
   String get _appPlanSubtitleClean => _t(
     telugu:
         '$_trialPriceLabel ట్రయల్‌తో ప్రారంభించి పోస్టర్ షేర్/డౌన్‌లోడ్ అన్‌లాక్ చేయండి.',
@@ -1952,6 +1961,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         '$_trialPriceLabel trial nas gojug in, poster share/download unlock chog.',
   );
 
+  // ignore: unused_element
   String get _trialOfferBodyClean => _t(
     telugu:
         'ఈ ప్లాన్ $_trialPriceLabel తో $_trialDays రోజుల ట్రయల్‌గా ప్రారంభమవుతుంది. ఈ సమయంలో మీరు రద్దు చేయవచ్చు.',
@@ -1991,6 +2001,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         'Plan di $_trialPriceLabel la $_trialDays nyin trial nang gojug in. Di dus la cancel chog.',
   );
 
+  // ignore: unused_element
   String get _appProSimpleBenefitClean => _t(
     telugu: 'ఫోటో మరియు పేరుతో పోస్టర్లు షేర్, డౌన్‌లోడ్ చేసుకోవచ్చు',
     english: 'Share and download posters with photo and name',
@@ -2033,6 +2044,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: '₹4 / 3 nyin, dena $_monthlyPriceLabel / month',
   );
 
+  // ignore: unused_element
   String get _plansAutoRenewNoticeClean => _t(
     telugu:
         'ప్లాన్ ఆటో-రిన్యూ అవుతుంది. Play Store లో ఎప్పుడైనా రద్దు చేయవచ్చు.',
@@ -2064,6 +2076,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Plan auto-renew in. Play Store la nam yang cancel chog.',
   );
 
+  // ignore: unused_element
   String get _subscribeAppProLabelClean => _t(
     telugu: 'App Pro సబ్‌స్క్రైబ్ చేయండి',
     english: 'Subscribe App Pro',
@@ -2085,6 +2098,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'App Pro subscribe chog',
   );
 
+  // ignore: unused_element
   String get _unlockPosterFeaturesClean => _t(
     telugu: 'పోస్టర్ షేర్ మరియు డౌన్‌లోడ్ ఫీచర్లు అన్‌లాక్ అవుతాయి.',
     english: 'Unlock poster share and download features.',
@@ -2106,6 +2120,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Poster share dang download feature unlock jung.',
   );
 
+  // ignore: unused_element
   String get _afterTrialRenewalClean => _t(
     telugu:
         '$_trialDays రోజుల తర్వాత ప్లాన్ $_monthlyPriceLabel / నెలగా ఆటో-రిన్యూ అవుతుంది.',
@@ -2145,6 +2160,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         '$_trialDays nyin nas plan $_monthlyPriceLabel / month auto-renew jung.',
   );
 
+  // ignore: unused_element
   String get _cancelTrialClean => _t(
     telugu: 'నెలసరి ఛార్జ్ రాకుండా $_trialDays రోజుల్లో రద్దు చేయవచ్చు.',
     english: 'Cancel within $_trialDays days to avoid the monthly charge.',
@@ -2168,6 +2184,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Monthly charge skyabse $_trialDays nyin nang cancel chog.',
   );
 
+  // ignore: unused_element
   String get _noEditorAssetsClean => _t(
     telugu: 'ఈ ప్లాన్‌లో ప్రీమియం ఎడిటర్ ఆస్తులు లేదా తెలుగు ఫాంట్లు ఉండవు.',
     english:
@@ -2194,6 +2211,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Di plan nang premium editor assets yangna Telugu fonts med.',
   );
 
+  // ignore: unused_element
   String get _restorePurchasedPlanClean => _t(
     telugu: 'కొనుగోలు చేసిన ప్లాన్ కనిపించకపోతే రీస్టోర్ చేయండి.',
     english: 'Restore if a purchased plan is not showing.',
@@ -2215,6 +2233,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     ladakhi: 'Nyospa plan mathong na restore chog.',
   );
 
+  // ignore: unused_element
   String get _editorProTitle => _t(
     telugu: 'Editor Pro',
     english: 'Editor Pro',
@@ -2224,6 +2243,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     malayalam: 'Editor Pro',
   );
 
+  // ignore: unused_element
   String get _editorPlanHeroSubtitle => _t(
     telugu:
         'Editor Pro monthly లేదా app + editor కోసం All Access yearly ఎంచుకోండి.',
@@ -2239,6 +2259,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         'Editor Pro monthly അല്ലെങ്കിൽ app + editor നായി All Access yearly തിരഞ്ഞെടുക്കുക.',
   );
 
+  // ignore: unused_element
   String get _billingNoticeText {
     if (_isEditorPlan) {
       return _t(
@@ -2296,85 +2317,451 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     );
   }
 
-  List<Widget> _buildPlanCards(List<String> appPlanDetails) {
-    return <Widget>[
-      _PlanChoiceCard(
-        title: _appProTitle,
-        subtitle: _appProSimpleBenefitClean,
-        price: _appProTrialPriceLabelClean,
-        details: const <String>[],
-        buttonLabel: _isSubscriptionActive
-            ? _alreadyActiveLabel
-            : _subscribeAppProLabelClean,
-        busy: _busyFree,
-        enabled: _canSubscribe,
-        accent: const Color(0xFF1D4ED8),
-        onTap: () => unawaited(_subscribeFreePlan()),
-      ),
-      const SizedBox(height: 10),
-      _PlanChoiceCard(
-        title: _t(
-          telugu: 'సంవత్సర ప్లాన్',
-          english: 'Yearly Plan',
-          hindi: 'Yearly Plan',
-          tamil: 'Yearly Plan',
-          kannada: 'Yearly Plan',
-          malayalam: 'Yearly Plan',
+  
+  String get _proHeroTitle => _t(
+    telugu: 'Mana Poster Pro',
+    english: 'Mana Poster Pro',
+    hindi: 'माना पोस्टर प्रो',
+    tamil: 'மானா போஸ்டர் ப்ரோ',
+    kannada: 'ಮಾನಾ ಪೋಸ್ಟರ್ ಪ್ರೊ',
+    malayalam: 'മാന പോസ്റ്റർ പ്രോ',
+    marathi: 'माना पोस्टर प्रो',
+    gujarati: 'માના પોસ્ટર પ્રો',
+    bengali: 'মানা পোস্টার প্রো',
+    punjabi: 'ਮਾਨਾ ਪੋਸਟਰ ਪ੍ਰੋ',
+    odia: 'ମାନା ପୋଷ୍ଟର ପ୍ରୋ',
+    assamese: 'মানা পোষ্টাৰ প্ৰো',
+    konkani: 'माना पोस्टर प्रो',
+    nepali: 'माना पोस्टर प्रो',
+    meitei: 'Mana Poster Pro',
+    mizo: 'Mana Poster Pro',
+    kashmiri: 'مانا پوسٹر پرو',
+    ladakhi: 'Mana Poster Pro',
+  );
+
+  String get _proHeroSubtitle => _t(
+    telugu: 'వ్యాపారం మరియు పండుగల పోస్టర్లను సులువుగా సృష్టించండి',
+    english: 'Create business and festival posters effortlessly',
+    hindi: 'व्यापार और त्योहारों के पोस्टर आसानी से बनाएं',
+    tamil: 'வணிகம் மற்றும் பண்டிகை போஸ்டர்களை எளிதாக உருவாக்குங்கள்',
+    kannada: 'ವ್ಯಾಪಾರ ಮತ್ತು ಹಬ್ಬದ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಸುಲಭವಾಗಿ ರಚಿಸಿ',
+    malayalam: 'ബിസിനസ്, ഉത്സവ പോസ്റ്ററുകൾ എളുപ്പത്തിൽ തയ്യാറാക്കുക',
+    marathi: 'व्यवसाय आणि सणांचे पोस्टर्स सहज तयार करा',
+    gujarati: 'વેપાર અને તહેવારોના પોસ્ટર સરળતાથી બનાવો',
+    bengali: 'ব্যবসা এবং উৎসবের পোস্টার সহজেই তৈরি করুন',
+    punjabi: 'ਕਾਰੋਬਾਰ ਅਤੇ ਤਿਉਹਾਰਾਂ ਦੇ ਪੋਸਟਰ ਆਸਾਨੀ ਨਾਲ ਬਣਾਓ',
+    odia: 'ବ୍ୟବସାୟ ଏବଂ ପର୍ବପର୍ବାଣୀ ପୋଷ୍ଟର ସହଜରେ ତିଆରି କରନ୍ତୁ',
+    assamese: 'ব্যৱসায় আৰু উৎসৱৰ পোষ্টাৰ সহজে সৃষ্টি কৰক',
+    konkani: 'वेपार आनी उत्सवांचे पोस्टर सोंपेपणी तयार करात',
+    nepali: 'व्यापार र चाडपर्वका पोस्टरहरू सजिलै बनाउनुहोस्',
+    meitei: 'Business amasung kumin poster laina semmu',
+    mizo: 'Sumdawnna leh kut poster-te awlsam takin siam rawh',
+    kashmiri: 'کاروبار تہ تیوہارن ہند پوسٹر بنایو سہل طریقہ سٲتھ',
+    ladakhi: 'Business dang festival poster thabshe skyod de bzo',
+  );
+
+  String get _proFeature1 => _t(
+    telugu: 'అపరిమిత పోస్టర్ డౌన్‌లోడ్స్ & షేరింగ్',
+    english: 'Unlimited poster downloads & sharing',
+    hindi: 'असीमित पोस्टर डाउनलोड और शेयरिंग',
+    tamil: 'வரம்பற்ற போஸ்டர் பதிவிறக்கம் & பகிர்வு',
+    kannada: 'ಅಪರಿಮಿತ ಪೋಸ್ಟರ್ ಡೌನ್‌ಲೋಡ್ ಮತ್ತು ಹಂಚಿಕೆ',
+    malayalam: 'പരിധിയില്ലാത്ത പോസ്റ്റർ ഡൗൺലോഡുകളും ഷെയറിംഗും',
+    marathi: 'अमर्याद पोस्टर डाउनलोड आणि शेअरिंग',
+    gujarati: 'અમર્યાદિત પોસ્ટર ડાઉનલોડ અને શેરિંગ',
+    bengali: 'সীমাহীন পোস্টার ডাউনলোড এবং শেয়ারিং',
+    punjabi: 'ਅਣਗਿਣਤ ਪੋਸਟਰ ਡਾਊਨਲੋਡ ਅਤੇ ਸ਼ੇਅਰਿੰਗ',
+    odia: 'ଅସୀମିତ ପୋଷ୍ଟର ଡାଉନଲୋଡ୍ ଓ ଶେୟାରିଂ',
+    assamese: 'সীমাহীন পোষ্টাৰ ডাউনলোড আৰু শ্বেয়াৰিং',
+    konkani: 'अमर्यादित पोस्टर डाउनलोड आनी शेयरिंग',
+    nepali: 'असीमित पोस्टर डाउनलोड र सेयरिङ',
+    meitei: 'Mapung fana poster download amasung share tou',
+    mizo: 'Poster download leh share theih zat a bituk lo',
+    kashmiri: 'لا محدود پوسٹر ڈاؤنلوڈ تہ شیئر',
+    ladakhi: 'Tshad med pa poster download dang share bzo',
+  );
+
+  String get _proFeature2 => _t(
+    telugu: 'మీ ఫోటో, పేరు మరియు వివరాలతో పర్సనలైజ్డ్ డిజైన్లు',
+    english: 'Personalized designs with your photo, name & details',
+    hindi: 'आपकी फोटो, नाम और विवरण के साथ पर्सनलाइज्ड डिजाइन',
+    tamil: 'உங்கள் புகைப்படம், பெயர் மற்றும் விவரங்களுடன் கூடிய தனிப்பயன் வடிவமைப்பு',
+    kannada: 'ನಿಮ್ಮ ಫೋಟೋ, ಹೆಸರು ಮತ್ತು ವಿವರಗಳೊಂದಿಗೆ ವೈಯಕ್ತೀಕರಿಸಿದ ವಿನ್ಯಾಸಗಳು',
+    malayalam: 'നിങ്ങളുടെ ഫോട്ടോ, പേര്, വിവരങ്ങൾ എന്നിവയോടെ വ്യക്തിഗത ഡിസൈനുകൾ',
+    marathi: 'तुमचा फोटो, नाव आणि माहितीसह वैयक्तिक डिझाइन',
+    gujarati: 'તમારા ફોટો, નામ અને વિગતો સાથે પર્સનલાઇઝ્ડ ડિઝાઇન',
+    bengali: 'আপনার ছবি, নাম এবং বিবরণসহ ব্যক্তিগত ডিজাইন',
+    punjabi: 'ਤੁਹਾਡੀ ਫੋਟੋ, ਨਾਮ ਅਤੇ ਵੇਰਵਿਆਂ ਨਾਲ ਨਿੱਜੀ ਡਿਜ਼ਾਈਨ',
+    odia: 'ଆପଣଙ୍କ ଫଟୋ, ନାମ ଏବଂ ବିବରଣୀ ସହିତ ବ୍ୟକ୍ତିଗତ ଡିଜାଇନ୍',
+    assamese: 'আপোনাৰ ফটো, নাম আৰু বিৱৰণৰ সৈতে ব্যক্তিগত ডিজাইন',
+    konkani: 'तुमचो फोटो, नांव आनी म्हायती सयत खाजगी डिझाइन',
+    nepali: 'तपाईंको फोटो, नाम र विवरणसहित व्यक्तिगत डिजाइन',
+    meitei: 'Nahakki photo, ming amasung details ga loinana personalized design',
+    mizo: 'I thlalak, hming leh chanchin nen mahni pual design',
+    kashmiri: 'تہندِ فوٹو، ناو تہ تفصیلات سٲتھ پرسنلائزڈ ڈیزائن',
+    ladakhi: 'Khye rang gi photo, ming dang details nyam po design',
+  );
+
+  String get _proFeature3 => _t(
+    telugu: 'వాటర్‌మార్క్ లేకుండా హై-క్వాలిటీ HD పోస్టర్లు',
+    english: 'High-quality HD posters with no watermark',
+    hindi: 'बिना वॉटरमार्क के हाई-क्वालिटी HD पोस्टर',
+    tamil: 'வாட்டர்மார்க் இல்லாத உயர் தர HD போஸ்டர்கள்',
+    kannada: 'ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲದ ಉನ್ನತ ಗುಣಮಟ್ಟದ HD ಪೋಸ್ಟರ್‌ಗಳು',
+    malayalam: 'വാട്ടർമാർക്ക് ഇല്ലാത്ത ഹൈ-ക്വാളിറ്റി HD പോസ്റ്ററുകൾ',
+    marathi: 'वॉटरमार्कशिवाय उच्च दर्जाचे HD पोस्टर्स',
+    gujarati: 'વોટરમાર્ક વિના ઉચ્ચ ગુણવત્તાવાળા HD પોસ્ટર',
+    bengali: 'ওয়াটারমার্ক ছাড়া উচ্চ মানের HD পোস্টার',
+    punjabi: 'ਬਿਨਾਂ ਵਾਟਰਮਾਰਕ ਦੇ ਉੱਚ ਗੁਣਵੱਤਾ ਵਾਲੇ HD ਪੋਸਟਰ',
+    odia: 'ୱାଟରମାର୍କ ବିନା ଉଚ୍ଚ ଗୁଣମାନର HD ପୋଷ୍ଟର',
+    assamese: 'ৱাটাৰমাৰ্ক অবিহনে উচ্চমানৰ HD পোষ্টাৰ',
+    konkani: 'वॉटरमार्क नाशिल्ले उच्च गुणवत्तेचे HD पोस्टर',
+    nepali: 'वाटरमार्क बिना उच्च गुणस्तरका HD पोस्टरहरू',
+    meitei: 'Watermark yaodana high-quality HD poster',
+    mizo: 'Watermark awm lo HD poster tha tak',
+    kashmiri: 'واٹر مارک بغیر اعلی کوالٹی ہند HD پوسٹر',
+    ladakhi: 'Watermark med pa high quality HD poster',
+  );
+
+  String get _bestValueBadgeClean => _t(
+    telugu: 'అత్యంత ఆదా',
+    english: 'Best Value',
+    hindi: 'सर्वोत्तम बचत',
+    tamil: 'சிறந்த மதிப்பு',
+    kannada: 'ಅತ್ಯುತ್ತಮ ಮೌಲ್ಯ',
+    malayalam: 'ഏറ്റവും ലാഭം',
+    marathi: 'सर्वोत्तम बचत',
+    gujarati: 'શ્રેષ્ઠ બચત',
+    bengali: 'সেরা সঞ্চয়',
+    punjabi: 'ਵਧੀਆ ਬੱਚਤ',
+    odia: 'ସର୍ବୋତ୍ତମ ବଚତ',
+    assamese: 'সৰ্বোত্তম সঞ্চয়',
+    konkani: 'बरो फायदो',
+    nepali: 'उत्कृष्ट बचत',
+    meitei: 'Khwainingba value',
+    mizo: 'Hlutna tha ber',
+    kashmiri: 'بہترین بچت',
+    ladakhi: 'Menchok phan thogs',
+  );
+
+  String get _yearlyPlanTitleClean => _t(
+    telugu: 'సంవత్సర ప్లాన్',
+    english: 'Yearly Plan',
+    hindi: 'वार्षिक प्लान',
+    tamil: 'வருடாந்திர திட்டம்',
+    kannada: 'ವಾರ್ಷಿಕ ಯೋಜನೆ',
+    malayalam: 'വാർഷിക പ്ലാൻ',
+    marathi: 'वार्षिक प्लॅन',
+    gujarati: 'વાર્ષિક પ્લાન',
+    bengali: 'বার্ষিক প্ল্যান',
+    punjabi: 'ਸਾਲਾਨਾ ਪਲਾਨ',
+    odia: 'ବାର୍ଷିକ ପ୍ଲାନ୍',
+    assamese: 'বাৰ্ষিক প্লেন',
+    konkani: 'वार्षिक प्लॅन',
+    nepali: 'वार्षिक प्लान',
+    meitei: 'Chahigi plan',
+    mizo: 'Kum khat plan',
+    kashmiri: 'سالانہ پلان',
+    ladakhi: 'Lo chig plan',
+  );
+
+  String get _yearlyPlanSubtitleClean => _t(
+    telugu: '$_yearlyPriceLabel / సంవత్సరం (నెలకు ₹58 మాత్రమే)',
+    english: '$_yearlyPriceLabel / year (Just ₹58/month)',
+    hindi: '$_yearlyPriceLabel / वर्ष (मात्र ₹58/माह)',
+    tamil: '$_yearlyPriceLabel / ஆண்டு (மாதம் ₹58 மட்டுமே)',
+    kannada: '$_yearlyPriceLabel / ವರ್ಷ (ತಿಂಗಳಿಗೆ ₹58 ಮಾತ್ರ)',
+    malayalam: '$_yearlyPriceLabel / വർഷം (പ്രതിമാസം ₹58 മാത്രം)',
+    marathi: '$_yearlyPriceLabel / वर्ष (फक्त ₹58/महिना)',
+    gujarati: '$_yearlyPriceLabel / વર્ષ (માત્ર ₹58/મહિનો)',
+    bengali: '$_yearlyPriceLabel / বছর (মাসে মাত্র ₹58)',
+    punjabi: '$_yearlyPriceLabel / ਸਾਲ (ਸਿਰਫ਼ ₹58/ਮਹੀਨਾ)',
+    odia: '$_yearlyPriceLabel / ବର୍ଷ (ମାସକୁ ମାତ୍ର ₹58)',
+    assamese: '$_yearlyPriceLabel / বছৰ (মাহে মাত্ৰ ₹58)',
+    konkani: '$_yearlyPriceLabel / वर्स (म्हयन्याक फकत ₹58)',
+    nepali: '$_yearlyPriceLabel / वर्ष (महिनाको मात्र ₹58)',
+    meitei: '$_yearlyPriceLabel / chahi (thada ₹58 khaktang)',
+    mizo: '$_yearlyPriceLabel / kum (thla khatah ₹58 chauh)',
+    kashmiri: '$_yearlyPriceLabel / ؤری (مہینس صرف ₹58)',
+    ladakhi: '$_yearlyPriceLabel / lo (zla va la ₹58 tsam)',
+  );
+
+  String get _monthlyTrialTitleClean => _t(
+    telugu: 'నెలవారీ ప్లాన్ (3 రోజుల ట్రయల్)',
+    english: 'Monthly Plan (3-Day Trial)',
+    hindi: 'मासिक प्लान (3 दिन का ट्रायल)',
+    tamil: 'மாதாந்திர திட்டம் (3 நாள் சோதனை)',
+    kannada: 'ಮಾಸಿಕ ಯೋಜನೆ (3 ದಿನಗಳ ಟ್ರಯಲ್)',
+    malayalam: 'പ്രതിമാസ പ്ലാൻ (3 ദിവസത്തെ ട്രയൽ)',
+    marathi: 'मासिक प्लॅन (3 दिवसांची ट्रायल)',
+    gujarati: 'માસિક પ્લાન (3 દિવસની ટ્રાયલ)',
+    bengali: 'মাসিক প্ল্যান (3 দিনের ট্রায়াল)',
+    punjabi: 'ਮਾਸਿਕ ਪਲਾਨ (3 ਦਿਨਾਂ ਦੀ ਟ੍ਰਾਇਲ)',
+    odia: 'ମାସିକ ପ୍ଲାନ୍ (3 ଦିନର ଟ୍ରାୟାଲ୍)',
+    assamese: 'মাহেকীয়া প্লেন (3 দিনৰ ট্রায়েল)',
+    konkani: 'म्हयन्याचो प्लॅन (3 दिसांची ट्रायल)',
+    nepali: 'मासिक प्लान (3 दिनको ट्रायल)',
+    meitei: 'Thagi plan (3 numit trial)',
+    mizo: 'Thla tin plan (ni 3 trial)',
+    kashmiri: 'ماہانہ پلان (3 دوہن ہند ٹرائل)',
+    ladakhi: 'Zla vai plan (nyin sum trial)',
+  );
+
+  String get _yearlyButtonCtaClean => _t(
+    telugu: 'సంవత్సర ప్లాన్ కొనసాగించండి - $_yearlyPriceLabel',
+    english: 'Continue with Yearly - $_yearlyPriceLabel',
+    hindi: 'वार्षिक प्लान के साथ आगे बढ़ें - $_yearlyPriceLabel',
+    tamil: 'வருடாந்திர திட்டத்தைத் தொடரவும் - $_yearlyPriceLabel',
+    kannada: 'ವಾರ್ಷಿಕ ಯೋಜನೆಯೊಂದಿಗೆ ಮುಂದುವರಿಯಿರಿ - $_yearlyPriceLabel',
+    malayalam: 'വാർഷിക പ്ലാനുമായി മുന്നോട്ട് പോകുക - $_yearlyPriceLabel',
+    marathi: 'वार्षिक प्लॅन सुरू ठेवा - $_yearlyPriceLabel',
+    gujarati: 'વાર્ષિક પ્લાન સાથે આગળ વધો - $_yearlyPriceLabel',
+    bengali: 'বার্ষিক প্ল্যান দিয়ে এগিয়ে যান - $_yearlyPriceLabel',
+    punjabi: 'ਸਾਲਾਨਾ ਪਲਾਨ ਨਾਲ ਅੱਗੇ ਵਧੋ - $_yearlyPriceLabel',
+    odia: 'ବାର୍ଷିକ ପ୍ଲାନ୍ ସହିତ ଆଗକୁ ବଢ଼ନ୍ତୁ - $_yearlyPriceLabel',
+    assamese: 'বাৰ্ষিক প্লেনৰ সৈতে আগবাঢ়ক - $_yearlyPriceLabel',
+    konkani: 'वार्षिक प्लॅनान मुखार वचात - $_yearlyPriceLabel',
+    nepali: 'वार्षिक प्लान जारी राख्नुहोस् - $_yearlyPriceLabel',
+    meitei: 'Chahigi planga loinana makha chatthok-u - $_yearlyPriceLabel',
+    mizo: 'Kum khat plan nen chhunzawm rawh - $_yearlyPriceLabel',
+    kashmiri: 'سالانہ پلان سٲتھ اگیہ ؤتھیو - $_yearlyPriceLabel',
+    ladakhi: 'Lo chig plan nyam po skyod - $_yearlyPriceLabel',
+  );
+
+  String get _trialButtonCtaClean => _t(
+    telugu: '$_trialPriceLabel ట్రయల్ ప్రారంభించండి',
+    english: 'Start $_trialPriceLabel Trial',
+    hindi: '$_trialPriceLabel ट्रायल शुरू करें',
+    tamil: '$_trialPriceLabel சோதனையைத் தொடங்குங்கள்',
+    kannada: '$_trialPriceLabel ಟ್ರಯಲ್ ಪ್ರಾರಂಭಿಸಿ',
+    malayalam: '$_trialPriceLabel ട്രയൽ ആരംഭിക്കുക',
+    marathi: '$_trialPriceLabel ट्रायल सुरू करा',
+    gujarati: '$_trialPriceLabel ટ્રાયલ શરૂ કરો',
+    bengali: '$_trialPriceLabel ট্রায়াল শুরু করুন',
+    punjabi: '$_trialPriceLabel ਟ੍ਰਾਇਲ ਸ਼ੁਰੂ ਕਰੋ',
+    odia: '$_trialPriceLabel ଟ୍ରାୟାଲ୍ ଆରମ୍ଭ କରନ୍ତୁ',
+    assamese: '$_trialPriceLabel ট্রায়েল আৰম্ভ কৰক',
+    konkani: '$_trialPriceLabel ट्रायल सुरू करात',
+    nepali: '$_trialPriceLabel ट्रायल सुरु गर्नुहोस्',
+    meitei: '$_trialPriceLabel trial houro',
+    mizo: '$_trialPriceLabel trial tan rawh',
+    kashmiri: '$_trialPriceLabel ٹرائل شروع کٔریو',
+    ladakhi: '$_trialPriceLabel trial gojug in',
+  );
+
+  String get _footerCancelNoticeClean => _t(
+    telugu: 'Play Store లో ఎప్పుడైనా రద్దు చేయవచ్చు • ఆటో-రిన్యూవల్',
+    english: 'Cancel anytime in Play Store • Auto-renews',
+    hindi: 'Play Store में कभी भी रद्द करें • ऑटो-रिन्यू',
+    tamil: 'Play Store-ல் எப்போது வேண்டுமானாலும் ரத்து செய்யலாம் • தானியங்கி புதுப்பித்தல்',
+    kannada: 'Play Store ನಲ್ಲಿ ಯಾವಾಗ ಬೇಕಾದರೂ ರದ್ದುಮಾಡಿ • ಸ್ವಯಂ ನವೀಕರಣ',
+    malayalam: 'Play Store-ൽ എപ്പോൾ വേണമെങ്കിലും റദ്ദാക്കാം • ഓട്ടോ-റിന്യൂവൽ',
+    marathi: 'Play Store मध्ये कधीही रद्द करा • ऑटो-रिन्यू',
+    gujarati: 'Play Store માં ક્યારે પણ રદ કરો • ઓટો-રિન્યુ',
+    bengali: 'Play Store-এ যেকোনো সময় বাতিল করুন • অটো-রিনিউ',
+    punjabi: 'Play Store ਵਿੱਚ ਕਦੇ ਵੀ ਰੱਦ ਕਰੋ • ਆਟੋ-ਰੀਨਿਊ',
+    odia: 'Play Store ରେ କେବେବି ରଦ୍ଦ କରନ୍ତୁ • ଅଟୋ-ରିନ୍ୟୁ',
+    assamese: 'Play Store ত যিকোনো সময়ত বাতিল কৰক • অটো-ৰিনিউ',
+    konkani: 'Play Storeांत केन्नाय रद्द करात • ऑटो-रिन्यू',
+    nepali: 'Play Store मा जुनसुकै बेला रद्द गर्नुहोस् • अटो-रिन्यू',
+    meitei: 'Play Store da matam pumnamakta cancel tou • Auto-renew',
+    mizo: 'Play Store-ah engtik lai pawhin cancel rawh • Auto-renew',
+    kashmiri: 'Play Store منز کنہِ وقت منسوخ کٔریو • آٹو رینیو',
+    ladakhi: 'Play Store la nam yang cancel chog • Auto-renew',
+  );
+
+  String get _restorePurchasesLinkClean => _t(
+    telugu: 'గతంలో కొనుగోలు చేసిన ప్లాన్ ఉందా? రీస్టోర్ చేయండి',
+    english: 'Already subscribed? Restore purchase',
+    hindi: 'पहले से सब्सक्रिप्शन है? रीस्टोर करें',
+    tamil: 'ஏற்கனவே சந்தா உள்ளதா? மீட்டமைக்கவும்',
+    kannada: 'ಈಗಾಗಲೇ ಚಂದಾದಾರರಾಗಿದ್ದೀರಾ? ಮರುಸ್ಥಾಪಿಸಿ',
+    malayalam: 'ഇതിനകം സബ്സ്ക്രൈബ് ചെയ്തോ? പുനഃസ്ഥാപിക്കുക',
+    marathi: 'आधीच सबस्क्रिप्शन आहे का? रिस्टोअर करा',
+    gujarati: 'પહેલેથી સબ્સ્ક્રિપ્શન છે? રીસ્ટોર કરો',
+    bengali: 'ইতিমধ্যে সাবস্ক্রাইব করেছেন? রিস্টোর করুন',
+    punjabi: 'ਪਹਿਲਾਂ ਹੀ ਸਬਸਕ੍ਰਾਈਬ ਕੀਤਾ ਹੈ? ਰੀਸਟੋਰ ਕਰੋ',
+    odia: 'ପୂର୍ବରୁ ସବସ୍କ୍ରାଇବ୍ କରିଛନ୍ତି କି? ରିଷ୍ଟୋର୍ କରନ୍ତୁ',
+    assamese: 'ইতিমধ্যে চাবস্ক্ৰাইব কৰিছেনে? ৰিষ্ট’ৰ কৰক',
+    konkani: 'पयलींच सदस्यताय आसा? रिस्टोर करात',
+    nepali: 'पहिले नै सदस्यता छ? रिस्टोर गर्नुहोस्',
+    meitei: 'Ahanbada subscribe toukhraba? Restore tou',
+    mizo: 'I subscribe tawh em? Restore rawh',
+    kashmiri: 'گوڈے سبسکرائب چھا؟ ریسٹور کٔریو',
+    ladakhi: 'Ngon nas subscribe yod da? Restore bzo',
+  );
+
+  String get _activeSubscriptionStatusClean => _t(
+    telugu: 'ప్రస్తుత ప్లాన్ యాక్టివ్‌గా ఉంది',
+    english: 'Current plan is active',
+    hindi: 'वर्तमान प्लान सक्रिय है',
+    tamil: 'தற்போதைய திட்டம் செயலில் உள்ளது',
+    kannada: 'ಪ್ರಸ್ತುತ ಯೋಜನೆ ಸಕ್ರಿಯವಾಗಿದೆ',
+    malayalam: 'നിലവിലെ പ്ലാൻ സജീവമാണ്',
+    marathi: 'सध्याचा प्लॅन सक्रिय आहे',
+    gujarati: 'હાલનો પ્લાન સક્રિય છે',
+    bengali: 'বর্তমান প্ল্যানটি সক্রিয় আছে',
+    punjabi: 'ਮੌਜੂਦਾ ਪਲਾਨ ਸਰਗਰਮ ਹੈ',
+    odia: 'ବର୍ତ୍ତମାନର ପ୍ଲାନ୍ ସକ୍ରିୟ ଅଛି',
+    assamese: 'বৰ্তমানৰ প্লেন সক্ৰিয় হৈ আছে',
+    konkani: 'सद्याचो प्लॅन सक्रिय आसा',
+    nepali: 'हालको प्लान सक्रिय छ',
+    meitei: 'Houjikti plan active oina lei',
+    mizo: 'Tun dinhmunah plan a nung',
+    kashmiri: 'موجودہ پلان چھُ فعال',
+    ladakhi: 'Dug kyi plan active yod',
+  );
+
+  Widget _buildFeatureRow(IconData icon, String text) {
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: const Color(0xFF6D28D9).withValues(alpha: 0.10),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_rounded,
+            size: 16,
+            color: Color(0xFF6D28D9),
+          ),
         ),
-        subtitle: _t(
-          telugu:
-              'ఒకసారి చెల్లించి సంవత్సరం మొత్తం పోస్టర్ షేర్/డౌన్‌లోడ్ వాడండి.',
-          english:
-              'Pay once and use poster sharing and downloads for the full year.',
-          hindi:
-              'Pay once and use poster sharing and downloads for the full year.',
-          tamil:
-              'Pay once and use poster sharing and downloads for the full year.',
-          kannada:
-              'Pay once and use poster sharing and downloads for the full year.',
-          malayalam:
-              'Pay once and use poster sharing and downloads for the full year.',
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
         ),
-        price: _yearlyPriceLabel,
-        details: const <String>[],
-        buttonLabel: _isSubscriptionActive
-            ? _alreadyActiveLabel
-            : _t(
-                telugu: 'సంవత్సర ప్లాన్ తీసుకోండి',
-                english: 'Choose Yearly',
-                hindi: 'Choose Yearly',
-                tamil: 'Choose Yearly',
-                kannada: 'Choose Yearly',
-                malayalam: 'Choose Yearly',
+      ],
+    );
+  }
+
+  Widget _buildPlanRadioCard({
+    required bool isSelected,
+    required VoidCallback onTap,
+    required String title,
+    required String subtitle,
+    required String? badge,
+  }) {
+    const primaryBrand = Color(0xFF6D28D9);
+    final borderColor = isSelected ? primaryBrand : const Color(0xFFE2E8F0);
+    final bgColor = isSelected ? const Color(0xFFFAF5FF) : Colors.white;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: borderColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? primaryBrand : const Color(0xFFCBD5E1),
+                  width: 2,
+                ),
+                color: isSelected ? primaryBrand : Colors.transparent,
               ),
-        busy: _busyYearly,
-        enabled: _canSubscribe,
-        accent: const Color(0xFF047857),
-        onTap: () => unawaited(_subscribeYearlyPlan()),
+              child: isSelected
+                  ? const Center(
+                      child: Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: Colors.white,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (badge != null) ...<Widget>[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            badge,
+                            style: const TextStyle(
+                              color: Color(0xFF15803D),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isSelected ? const Color(0xFF475569) : const Color(0xFF64748B),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ];
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEditorPlan = _isEditorPlan;
-    final pageBackground = isEditorPlan
-        ? const Color(0xFF070A12)
-        : Colors.white;
-    final titleColor = isEditorPlan ? Colors.white : const Color(0xFF0F172A);
-    final subtitleColor = isEditorPlan
-        ? const Color(0xFFCBD5E1)
-        : const Color(0xFF475569);
-    final appBarForeground = isEditorPlan
-        ? Colors.white
-        : const Color(0xFF0F172A);
-    final List<String> planDetails = <String>[
-      _trialOfferBodyClean,
-      _unlockPosterFeaturesClean,
-      _afterTrialRenewalClean,
-      _cancelTrialClean,
-      _noEditorAssetsClean,
-    ];
+    const primaryBrand = Color(0xFF6D28D9);
+    const darkText = Color(0xFF0F172A);
+    const subText = Color(0xFF64748B);
+
+    final bool isActionBusy = _selectedPlanIndex == 0 ? _busyYearly : _busyFree;
+    final String ctaButtonLabel = _isSubscriptionActive
+        ? _alreadyActiveLabel
+        : (_selectedPlanIndex == 0
+            ? _yearlyButtonCtaClean
+            : _trialButtonCtaClean);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -2383,684 +2770,230 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: pageBackground,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: pageBackground,
+          backgroundColor: Colors.white,
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-          iconTheme: IconThemeData(color: appBarForeground),
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: appBarForeground),
+            icon: const Icon(Icons.arrow_back_rounded, color: darkText),
             onPressed: _handleBackPress,
           ),
         ),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          onRefresh: _refreshStatus,
-          child: ListView(
-            physics: isEditorPlan
-                ? const AlwaysScrollableScrollPhysics()
-                : const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              isEditorPlan ? 20 : 16,
-              isEditorPlan ? 8 : 0,
-              isEditorPlan ? 20 : 16,
-              isEditorPlan ? 26 : 12,
-            ),
-            children: <Widget>[
-              if (isEditorPlan) ...<Widget>[
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: <Color>[Color(0xFF151A2E), Color(0xFF0B1020)],
-                    ),
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.10),
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.28),
-                        blurRadius: 28,
-                        offset: const Offset(0, 16),
+        body: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: _refreshStatus,
+            child: ListView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: const Color(0xFF6D28D9).withValues(alpha: 0.28),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Color(0xFFFDE047),
+                      size: 32,
+                    ),
                   ),
-                  child: Row(
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _proHeroTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: darkText,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _proHeroSubtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: subText,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                if (_isSubscriptionActive) ...<Widget>[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: Color(0xFF16A34A),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '$_activeSubscriptionStatusClean${_subscriptionExpiryLine() != null ? ' • ${_subscriptionExpiryLine()}' : ''}',
+                            style: const TextStyle(
+                              color: Color(0xFF15803D),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFEDF2F7)),
+                  ),
+                  child: Column(
                     children: <Widget>[
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFFACC15,
-                          ).withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.workspace_premium_rounded,
-                          color: Color(0xFFFACC15),
-                          size: 27,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          _t(
-                            telugu: 'ప్రతి డిజైన్‌కు ప్రీమియం ఎడిటర్ టూల్స్',
-                            english: 'Premium editor tools for every design',
-                            hindi: 'हर डिजाइन के लिए प्रीमियम एडिटर टूल्स',
-                            tamil:
-                                'ஒவ்வொரு டிசைனுக்கும் பிரீமியம் எடிட்டர் கருவிகள்',
-                            kannada:
-                                'ಪ್ರತಿ ವಿನ್ಯಾಸಕ್ಕೂ ಪ್ರೀಮಿಯಂ ಎಡಿಟರ್ ಟೂಲ್‌ಗಳು',
-                            malayalam: 'ഓരോ ഡിസൈനിനും പ്രീമിയം എഡിറ്റർ ടൂളുകൾ',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            height: 1.25,
-                          ),
-                        ),
-                      ),
+                      _buildFeatureRow(Icons.all_inclusive_rounded, _proFeature1),
+                      const SizedBox(height: 10),
+                      _buildFeatureRow(Icons.badge_outlined, _proFeature2),
+                      const SizedBox(height: 10),
+                      _buildFeatureRow(Icons.hd_outlined, _proFeature3),
                     ],
                   ),
                 ),
                 const SizedBox(height: 18),
-              ],
-              Text(
-                isEditorPlan ? _editorProTitle : _appPlanTitleClean,
-                style: const TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w800,
-                  height: 1.08,
-                ).copyWith(color: titleColor, fontSize: isEditorPlan ? 27 : 23),
-              ),
-              SizedBox(height: isEditorPlan ? 8 : 5),
-              Text(
-                isEditorPlan ? _editorPlanHeroSubtitle : _appPlanSubtitleClean,
-                style:
-                    const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
-                    ).copyWith(
-                      color: subtitleColor,
-                      fontSize: isEditorPlan ? 14.5 : 13,
-                    ),
-              ),
-              SizedBox(height: isEditorPlan ? 16 : 10),
-              _SubscriptionStatusCard(
-                label: _subscriptionStatusLabel(),
-                helper: _statusLine(),
-                startLine: _subscriptionStartLine(),
-                expiryLine: _subscriptionExpiryLine(),
-                statusColor: _statusColor,
-                backgroundColor: _statusBackgroundColor,
-                borderColor: _statusBorderColor,
-              ),
-              SizedBox(height: isEditorPlan ? 14 : 10),
-              ..._buildPlanCards(planDetails),
-              SizedBox(height: isEditorPlan ? 14 : 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
+                _buildPlanRadioCard(
+                  isSelected: _selectedPlanIndex == 0,
+                  onTap: () {
+                    if (!_isBusy) {
+                      setState(() => _selectedPlanIndex = 0);
+                    }
+                  },
+                  title: _yearlyPlanTitleClean,
+                  subtitle: _yearlyPlanSubtitleClean,
+                  badge: _bestValueBadgeClean,
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                const SizedBox(height: 12),
+                _buildPlanRadioCard(
+                  isSelected: _selectedPlanIndex == 1,
+                  onTap: () {
+                    if (!_isBusy) {
+                      setState(() => _selectedPlanIndex = 1);
+                    }
+                  },
+                  title: _monthlyTrialTitleClean,
+                  subtitle: _appProTrialPriceLabelClean,
+                  badge: null,
                 ),
-                child: Row(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.restore_rounded,
-                      color: Color(0xFF475569),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _restorePurchasedPlanClean,
-                        style: const TextStyle(
-                          color: Color(0xFF334155),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25,
-                        ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _isBusy || !_canSubscribe
+                        ? null
+                        : () {
+                            if (_selectedPlanIndex == 0) {
+                              unawaited(_subscribeYearlyPlan());
+                            } else {
+                              unawaited(_subscribeFreePlan());
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryBrand,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFCBD5E1),
+                      disabledForegroundColor: const Color(0xFF64748B),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      elevation: 0,
                     ),
-                    TextButton(
-                      onPressed: _busyRestore ? null : _restoreSubscriptions,
-                      child: _busyRestore
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              _t(
-                                telugu: 'Restore',
-                                english: 'Restore',
-                                hindi: 'Restore',
-                                tamil: 'Restore',
-                                kannada: 'Restore',
-                                malayalam: 'Restore',
-                              ),
+                    child: isActionBusy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
                             ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: isEditorPlan ? 12 : 8),
-              Container(
-                padding: EdgeInsets.all(isEditorPlan ? 14 : 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      color: Color(0xFFD97706),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        isEditorPlan
-                            ? _billingNoticeText
-                            : _plansAutoRenewNoticeClean,
-                        style: const TextStyle(
-                          color: Color(0xFF92400E),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          height: 1.28,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ));
-  }
-}
-
-class _SubscriptionStatusCard extends StatelessWidget {
-  const _SubscriptionStatusCard({
-    required this.label,
-    required this.helper,
-    required this.startLine,
-    required this.expiryLine,
-    required this.statusColor,
-    required this.backgroundColor,
-    required this.borderColor,
-  });
-
-  final String label;
-  final String helper;
-  final String? startLine;
-  final String? expiryLine;
-  final Color statusColor;
-  final Color backgroundColor;
-  final Color borderColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                          )
+                        : Text(
+                            ctaButtonLabel,
+                            style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                   ),
                 ),
-              ),
-              Text(
-                helper,
-                style: const TextStyle(
-                  color: Color(0xFF334155),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          if (startLine case final line?) ...<Widget>[
-            const SizedBox(height: 14),
-            Text(
-              line,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          if (expiryLine case final line?) ...<Widget>[
-            const SizedBox(height: 6),
-            Text(
-              line,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _PlanSection extends StatelessWidget {
-  const _PlanSection({
-    required this.title,
-    required this.details,
-    required this.monthlyPrice,
-    required this.buttonLabel,
-    required this.onTap,
-    required this.busy,
-    required this.accent,
-    required this.enabled,
-  });
-
-  final String title;
-  final List<String> details;
-  final String monthlyPrice;
-  final String buttonLabel;
-  final VoidCallback onTap;
-  final bool busy;
-  final Color accent;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color bulletAccent = enabled ? accent : const Color(0xFF94A3B8);
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: accent.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  title,
+                const SizedBox(height: 14),
+                Text(
+                  _footerCancelNoticeClean,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 19,
-                    height: 1.15,
+                    color: Color(0xFF94A3B8),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                monthlyPrice,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _CompactPriceLine(
-            title: context.strings.localized(
-              telugu: 'ట్రయల్',
-              english: 'Trial',
-              hindi: 'ट्रायल',
-              tamil: 'சோதனை',
-              kannada: 'ಪ್ರಯೋಗ',
-              malayalam: 'ട്രയൽ',
-              marathi: 'ट्रायल',
-              gujarati: 'ટ્રાયલ',
-              bengali: 'ট্রায়াল',
-              punjabi: 'ਟਰਾਇਲ',
-              odia: 'ଟ୍ରାଏଲ୍',
-              assamese: 'ট্ৰায়েল',
-              konkani: 'ट्रायल',
-              nepali: 'परीक्षण',
-              meitei: 'Trial',
-              mizo: 'Chhinna',
-              kashmiri: 'ٹرائل',
-              ladakhi: 'ཚོད་ལྟ།',
-            ),
-            value: SubscriptionPlanConfig.trialValueDisplay,
-            accent: const Color(0xFF16A34A),
-          ),
-          const SizedBox(height: 14),
-          ...details.map(
-            (line) => Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: bulletAccent.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+                const SizedBox(height: 6),
+                Center(
+                  child: TextButton(
+                    onPressed: _busyRestore ? null : _restoreSubscriptions,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: bulletAccent,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      line,
-                      style: const TextStyle(
-                        color: Color(0xFF334155),
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.32,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: _SubscriptionActionButton(
-              label: buttonLabel,
-              busy: busy,
-              enabled: enabled,
-              accent: accent,
-              onTap: onTap,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanChoiceCard extends StatelessWidget {
-  const _PlanChoiceCard({
-    required this.title,
-    required this.subtitle,
-    required this.price,
-    required this.details,
-    required this.buttonLabel,
-    required this.busy,
-    required this.enabled,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final String price;
-  final List<String> details;
-  final String buttonLabel;
-  final bool busy;
-  final bool enabled;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color bulletAccent = enabled ? accent : const Color(0xFF94A3B8);
-
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFF2563EB),
-            Color(0xFF9333EA),
-            Color(0xFFEC4899),
-            Color(0xFFF59E0B),
-            Color(0xFF10B981),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 19,
-                      height: 1.05,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    price,
-                    maxLines: 2,
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: accent,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 19,
-                      height: 1.05,
-                    ),
+                    child: _busyRestore
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _restorePurchasesLinkClean,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 7),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontWeight: FontWeight.w600,
-                fontSize: 12.8,
-                height: 1.22,
-              ),
-            ),
-            if (details.isNotEmpty) const SizedBox(height: 12),
-            ...details.map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: bulletAccent.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.check_rounded,
-                        size: 13,
-                        color: bulletAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        line,
-                        style: const TextStyle(
-                          color: Color(0xFF334155),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          height: 1.25,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 11),
-            SizedBox(
-              width: double.infinity,
-              child: _SubscriptionActionButton(
-                label: buttonLabel,
-                busy: busy,
-                enabled: enabled,
-                accent: accent,
-                onTap: onTap,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _SubscriptionActionButton extends StatelessWidget {
-  const _SubscriptionActionButton({
-    required this.label,
-    required this.busy,
-    required this.enabled,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool busy;
-  final bool enabled;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: busy || !enabled ? null : onTap,
-      style: FilledButton.styleFrom(
-        backgroundColor: enabled ? accent : const Color(0xFFCBD5E1),
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: const Color(0xFFCBD5E1),
-        disabledForegroundColor: const Color(0xFF64748B),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-      ),
-      child: busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
-    );
-  }
-}
-
-class _CompactPriceLine extends StatelessWidget {
-  const _CompactPriceLine({
-    required this.title,
-    required this.value,
-    required this.accent,
-  });
-
-  final String title;
-  final String value;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: accent,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
       ),
     );
   }
