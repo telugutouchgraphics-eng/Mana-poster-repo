@@ -10,9 +10,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
 import 'package:image/image.dart' as img;
@@ -128,17 +126,6 @@ class NotificationService {
     }
 
     await _initializeLocalNotifications(_localNotifications);
-
-    const MethodChannel('mana_poster/test_notification').setMethodCallHandler((call) async {
-      if (call.method == 'trigger_test') {
-        final String cat = (call.arguments as String?)?.trim().isNotEmpty == true
-            ? (call.arguments as String).trim()
-            : 'morning';
-        await triggerDeviceOnlyTestNotification(categoryKey: cat);
-        return true;
-      }
-      return false;
-    });
 
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     await messaging.setAutoInitEnabled(true);
@@ -2375,7 +2362,7 @@ class NotificationService {
       if (decoded == null) {
         return null;
       }
-      const double stripRatio = 84 / 640;
+      const double stripRatio = 232 / 900;
       final int stripHeight = (decoded.height * stripRatio).round().clamp(
         1,
         decoded.height,
@@ -2506,31 +2493,28 @@ class NotificationService {
     }
   }
 
-  static String defaultFooterTextForLanguage(AppLanguage language) {
+  static String _defaultFooterTextForLanguage(AppLanguage language) {
     return switch (language) {
-      AppLanguage.telugu => 'వాట్సాప్‌లో షేర్ చేయండి',
-      AppLanguage.english => 'Share on WhatsApp',
-      AppLanguage.hindi => 'व्हाट्सएप पर शेयर करें',
-      AppLanguage.tamil => 'வாட்ஸ்அப்பில் பகிருங்கள்',
-      AppLanguage.kannada => 'ವಾಟ್ಸಾಪ್‌ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ',
-      AppLanguage.malayalam => 'വാട്ട്‌സ്ആപ്പിൽ പങ്കിടുക',
-      AppLanguage.marathi => 'व्हॉट्सॲपवर शेअर करा',
-      AppLanguage.gujarati => 'વોટ્સએપ પર શેર કરો',
-      AppLanguage.bengali => 'হোয়াটসঅ্যাপে শেয়ার করুন',
-      AppLanguage.punjabi => 'ਵਟਸਐਪ \'ਤੇ ਸ਼ੇਅਰ ਕਰੋ',
-      AppLanguage.odia => 'ହ୍ୱାଟ୍ସଆପ୍‌ରେ ଶେୟାର କରନ୍ତୁ',
-      AppLanguage.assamese => 'হোৱাটছএপত শ্বেয়াৰ কৰক',
-      AppLanguage.konkani => 'व्हॉट्सॲपार शेयर करात',
-      AppLanguage.nepali => 'ह्वाट्सएपमा सेयर गर्नुहोस्',
-      AppLanguage.meitei => 'WhatsApp da share tou',
-      AppLanguage.mizo => 'WhatsApp-ah share rawh',
-      AppLanguage.kashmiri => 'واٹس ایپ پؠٹھ شیئر کٔریو',
-      AppLanguage.ladakhi => 'WhatsApp la share bzo',
+      AppLanguage.telugu => 'ఇప్పుడే షేర్ చేయండి',
+      AppLanguage.hindi => 'अभी शेयर करें',
+      AppLanguage.english => 'Share now',
+      AppLanguage.tamil => 'இப்போது பகிருங்கள்',
+      AppLanguage.kannada => 'ಈಗ ಹಂಚಿ',
+      AppLanguage.malayalam => 'ഇപ്പോൾ ഷെയർ ചെയ്യൂ',
+      AppLanguage.assamese => 'এতিয়াই শ্বেয়াৰ কৰক',
+      AppLanguage.konkani => 'आतां शेअर करात',
+      AppLanguage.gujarati => 'હમણાં શેર કરો',
+      AppLanguage.marathi => 'आत्ताच शेअर करा',
+      AppLanguage.meitei => 'হৌজিক শেয়র তৌ',
+      AppLanguage.mizo => 'Tunah share rawh',
+      AppLanguage.odia => 'ଏବେ ସେୟାର କରନ୍ତୁ',
+      AppLanguage.punjabi => 'ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ',
+      AppLanguage.nepali => 'अहिले शेयर गर्नुहोस्',
+      AppLanguage.bengali => 'এখনই শেয়ার করুন',
+      AppLanguage.kashmiri => 'وُنہ شیئر کریو',
+      AppLanguage.ladakhi => 'Da share chos',
     };
   }
-
-  static String _defaultFooterTextForLanguage(AppLanguage language) =>
-      defaultFooterTextForLanguage(language);
 
   static String _defaultHeaderText({
     required String categoryKey,
@@ -2664,78 +2648,6 @@ class NotificationService {
     }
   }
 
-  static ui.Image? _cachedWhatsAppIcon;
-
-  static Future<void> _drawWhatsAppIcon(Canvas canvas, Rect rect) async {
-    ui.Image? icon = _cachedWhatsAppIcon;
-    if (icon == null) {
-      try {
-        final ByteData data = await rootBundle.load('assets/branding/whatsapp_icon.png');
-        final ui.Codec codec = await instantiateImageCodec(data.buffer.asUint8List());
-        final ui.FrameInfo fi = await codec.getNextFrame();
-        icon = fi.image;
-        _cachedWhatsAppIcon = icon;
-      } catch (_) {}
-    }
-
-    if (icon != null) {
-      canvas.drawImageRect(
-        icon,
-        Rect.fromLTWH(0, 0, icon.width.toDouble(), icon.height.toDouble()),
-        rect,
-        Paint()..isAntiAlias = true,
-      );
-    } else {
-      // Vector fallback: Crisp White WhatsApp speech bubble & handset
-      final Paint whiteFill = Paint()
-        ..color = const Color(0xFFFFFFFF)
-        ..isAntiAlias = true;
-
-      final double cx = rect.center.dx;
-      final double cy = rect.center.dy;
-      final double r = rect.width / 2.0;
-
-      final Path bubblePath = Path()
-        ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.92))
-        ..moveTo(cx - (r * 0.55), cy + (r * 0.65))
-        ..lineTo(cx - (r * 0.85), cy + (r * 0.92))
-        ..lineTo(cx - (r * 0.35), cy + (r * 0.82))
-        ..close();
-      canvas.drawPath(
-        bubblePath,
-        Paint()
-          ..color = const Color(0xFFFFFFFF)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.5
-          ..isAntiAlias = true,
-      );
-
-      final Path phonePath = Path();
-      phonePath.moveTo(cx - (r * 0.35), cy - (r * 0.15));
-      phonePath.cubicTo(
-        cx - (r * 0.45),
-        cy + (r * 0.15),
-        cx - (r * 0.15),
-        cy + (r * 0.45),
-        cx + (r * 0.15),
-        cy + (r * 0.35),
-      );
-      phonePath.lineTo(cx + (r * 0.3), cy + (r * 0.2));
-      phonePath.lineTo(cx + (r * 0.18), cy + (r * 0.05));
-      phonePath.lineTo(cx + (r * 0.05), cy + (r * 0.12));
-      phonePath.cubicTo(
-        cx - (r * 0.08),
-        cy + (r * 0.05),
-        cx - (r * 0.05),
-        cy - (r * 0.08),
-        cx + (r * 0.12),
-        cy - (r * 0.05),
-      );
-      phonePath.close();
-      canvas.drawPath(phonePath, whiteFill);
-    }
-  }
-
   static Future<String?> _renderFramedNotificationImage({
     required String? posterPath,
     required String? userPhotoPath,
@@ -2777,46 +2689,40 @@ class NotificationService {
 
       try {
         const double canvasWidth = 1080.0;
-        const double canvasHeight = 640.0;
+        const double canvasHeight = 900.0;
 
         final ui.PictureRecorder recorder = ui.PictureRecorder();
         final Canvas canvas = Canvas(recorder);
 
-        // 1. Base clean background
+        // 1. Base background
         canvas.drawRect(
           const Rect.fromLTWH(0, 0, canvasWidth, canvasHeight),
           Paint()..color = const Color(0xFFFFFFFF),
         );
 
-        // 2. Top Header (Height: 84px)
-        const double headerHeight = 84.0;
+        // 2. Outer frame border
+        final Paint borderPaint = Paint()
+          ..color = const Color(0xFF0A9F16)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16.0;
+        canvas.drawRect(
+          const Rect.fromLTWH(8, 8, canvasWidth - 16, canvasHeight - 16),
+          borderPaint,
+        );
+
+        // 3. Notification Header Band (Height: 232px)
+        const double headerHeight = 232.0;
         canvas.drawRect(
           const Rect.fromLTWH(0, 0, canvasWidth, headerHeight),
-          Paint()..color = const Color(0xFFFFFFFF),
+          Paint()..color = const Color(0xFF15930E),
         );
 
-        // Hairline divider
-        canvas.drawLine(
-          const Offset(0, headerHeight),
-          const Offset(canvasWidth, headerHeight),
-          Paint()
-            ..color = const Color(0xFFE2E8F0)
-            ..strokeWidth = 1.5,
-        );
-
-        // Circular User Avatar (center=(56, 42), radius=30)
-        const Offset avatarCenter = Offset(56.0, 42.0);
-        const double avatarRadius = 30.0;
-
-        // Outer accent ring
-        canvas.drawCircle(
-          avatarCenter,
-          avatarRadius + 2.0,
-          Paint()
-            ..color = const Color(0xFFCBD5E1)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5,
-        );
+        // Header Avatar (x=34, y=62, diameter=106)
+        const double avatarLeft = 34.0;
+        const double avatarTop = 62.0;
+        const double avatarSize = 106.0;
+        const double avatarRadius = avatarSize / 2;
+        final Offset avatarCenter = Offset(avatarLeft + avatarRadius, avatarTop + avatarRadius);
 
         _drawCircularAvatar(
           canvas: canvas,
@@ -2824,78 +2730,39 @@ class NotificationService {
           center: avatarCenter,
           radius: avatarRadius,
           fallbackInitial: userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'M',
-          borderColor: const Color(0xFFFFFFFF),
-          borderWidth: 2.5,
-          backgroundColor: const Color(0xFFEEF2F6),
-          initialColor: const Color(0xFF2563EB),
+          borderColor: const Color(0xD1FFFFFF),
+          borderWidth: 4.0,
+          backgroundColor: const Color(0xFF0A9F16),
         );
 
-        // User Name (Row 1)
-        final String safeDisplayName = userName.trim().isNotEmpty
-            ? userName.trim()
+        // Header Brand Text
+        _drawTextOnCanvas(
+          canvas: canvas,
+          text: 'Mana Poster Ai',
+          offset: const Offset(168, 28),
+          maxWidth: 868,
+          fontSize: 20,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w900,
+        );
+
+        // Header Localized Greeting Text
+        final String safeHeader = headerText.trim().isNotEmpty
+            ? headerText.trim()
             : 'Mana Poster';
         _drawTextOnCanvas(
           canvas: canvas,
-          text: safeDisplayName,
-          offset: const Offset(102, 16),
-          maxWidth: 720,
-          fontSize: 24,
-          color: const Color(0xFF0F172A),
-          fontWeight: FontWeight.w800,
-        );
-
-        // Greeting / Subtitle (Row 2)
-        final String safeHeader = headerText.trim().isNotEmpty
-            ? headerText.trim()
-            : 'మీ పోస్టర్ సిద్ధంగా ఉంది';
-        _drawTextOnCanvas(
-          canvas: canvas,
           text: safeHeader,
-          offset: const Offset(102, 46),
-          maxWidth: 720,
-          fontSize: 18,
-          color: const Color(0xFF475569),
-          fontWeight: FontWeight.w600,
+          offset: const Offset(168, 56),
+          maxWidth: 868,
+          fontSize: safeHeader.length > 25 ? 40 : 48,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w900,
+          maxLines: 2,
         );
 
-        // Brand Badge (Top-Right)
-        const Rect brandRect = Rect.fromLTWH(894, 24, 156, 36);
-        final RRect brandRRect = RRect.fromRectAndRadius(brandRect, const Radius.circular(18));
-        canvas.drawRRect(brandRRect, Paint()..color = const Color(0xFFF1F5F9));
-        canvas.drawRRect(
-          brandRRect,
-          Paint()
-            ..color = const Color(0xFFE2E8F0)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.0,
-        );
-        _drawTextOnCanvas(
-          canvas: canvas,
-          text: 'Mana Poster',
-          offset: const Offset(894, 32),
-          maxWidth: 156,
-          fontSize: 16,
-          color: const Color(0xFF0284C7),
-          fontWeight: FontWeight.w700,
-          textAlign: TextAlign.center,
-        );
-
-        // 3. Center Poster Display (y=92 to 552, height=460px)
-        const Rect posterRect = Rect.fromLTWH(24, 92, 1032, 460);
-        final RRect posterRRect = RRect.fromRectAndRadius(posterRect, const Radius.circular(12));
-
-        // Poster container background & subtle border
-        canvas.drawRRect(posterRRect, Paint()..color = const Color(0xFFF8FAFC));
-        canvas.drawRRect(
-          posterRRect,
-          Paint()
-            ..color = const Color(0xFFE2E8F0)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.0,
-        );
-
-        canvas.save();
-        canvas.clipRRect(posterRRect);
+        // 4. Center Poster Image (x=36, y=246, width=1008, height=390)
+        const Rect posterRect = Rect.fromLTWH(36, 246, 1008, 390);
         final FittedSizes fitted = applyBoxFit(
           BoxFit.contain,
           Size(posterImage.width.toDouble(), posterImage.height.toDouble()),
@@ -2905,56 +2772,74 @@ class NotificationService {
           fitted.destination,
           posterRect,
         );
+
+        // Background behind poster
+        canvas.drawRect(
+          posterRect,
+          Paint()..color = const Color(0xFFF4F4F4),
+        );
         canvas.drawImageRect(
           posterImage,
           Rect.fromLTWH(0, 0, posterImage.width.toDouble(), posterImage.height.toDouble()),
           destPosterRect,
           Paint()..isAntiAlias = true,
         );
-        canvas.restore();
 
-        // 4. Bottom WhatsApp Share Pill Bar (y=564 to 624, height=60px)
-        const Rect sharePillRect = Rect.fromLTWH(80, 564, 920, 60);
-        final RRect sharePillRRect = RRect.fromRectAndRadius(sharePillRect, const Radius.circular(30));
+        // 5. Footer area (White background)
+        const Rect footerWhiteRect = Rect.fromLTWH(36, 636, 1008, 140);
+        canvas.drawRect(footerWhiteRect, Paint()..color = const Color(0xFFFFFFFF));
 
-        // Soft elevation glow behind WhatsApp pill
-        canvas.drawRRect(
-          sharePillRRect.inflate(1.5),
-          Paint()..color = const Color(0x3325D366),
+        // Center Profile Avatar in footer
+        const Offset footerAvatarCenter = Offset(540, 642);
+        const double footerAvatarRadius = 50.0;
+
+        _drawCircularAvatar(
+          canvas: canvas,
+          image: userPhotoImage,
+          center: footerAvatarCenter,
+          radius: footerAvatarRadius,
+          fallbackInitial: userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'M',
+          borderColor: const Color(0xFF0A9F16),
+          borderWidth: 4.0,
+          backgroundColor: const Color(0xFFE8F5E9),
+          initialColor: const Color(0xFF0A9F16),
         );
+
+        // User Name under avatar
+        final String safeDisplayName = userName.trim();
+        if (safeDisplayName.isNotEmpty) {
+          _drawTextOnCanvas(
+            canvas: canvas,
+            text: safeDisplayName,
+            offset: const Offset(80, 704),
+            maxWidth: 920,
+            fontSize: 26,
+            color: const Color(0xFF1F7D1F),
+            fontWeight: FontWeight.w800,
+            textAlign: TextAlign.center,
+          );
+        }
+
+        // 6. Share bar at bottom
+        const Rect shareBarRect = Rect.fromLTWH(36, 750, 1008, 68);
         canvas.drawRRect(
-          sharePillRRect,
-          Paint()..color = const Color(0xFF25D366),
+          RRect.fromRectAndRadius(shareBarRect, const Radius.circular(8)),
+          Paint()..color = const Color(0xFF03B92B),
         );
 
-        final String shareText = footerText.trim().isNotEmpty
+        final String safeFooter = footerText.trim().isNotEmpty
             ? footerText.trim()
-            : 'వాట్సాప్‌లో షేర్ చేయండి';
-
-        final TextPainter textPainter = TextPainter(
-          text: TextSpan(
-            text: shareText,
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-        )..layout(maxWidth: 800);
-
-        const double iconSize = 34.0;
-        const double iconGap = 14.0;
-        final double totalContentWidth = iconSize + iconGap + textPainter.width;
-        final double startX = sharePillRect.left + (sharePillRect.width - totalContentWidth) / 2.0;
-        final double iconY = sharePillRect.top + (sharePillRect.height - iconSize) / 2.0;
-        final Rect iconRect = Rect.fromLTWH(startX, iconY, iconSize, iconSize);
-
-        await _drawWhatsAppIcon(canvas, iconRect);
-
-        final double textY = sharePillRect.top + (sharePillRect.height - textPainter.height) / 2.0;
-        textPainter.paint(canvas, Offset(startX + iconSize + iconGap, textY));
+            : 'ఇప్పుడే షేర్ చేయండి';
+        _drawTextOnCanvas(
+          canvas: canvas,
+          text: safeFooter,
+          offset: const Offset(36, 768),
+          maxWidth: 1008,
+          fontSize: 28,
+          color: const Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w800,
+          textAlign: TextAlign.center,
+        );
 
         // Render picture to image
         final ui.Picture picture = recorder.endRecording();
@@ -2991,135 +2876,6 @@ class NotificationService {
         stackTrace: stackTrace,
       );
       return posterPath;
-    }
-  }
-
-  static Future<String> _createOrGetSampleTestPoster() async {
-    final Directory directory = await getTemporaryDirectory();
-    final File sampleFile = File('${directory.path}/sample_test_poster.png');
-    if (await sampleFile.exists() && await sampleFile.length() > 0) {
-      return sampleFile.path;
-    }
-
-    try {
-      final ByteData data = await rootBundle.load('assets/branding/mana_poster_logo.png');
-      final Uint8List bytes = data.buffer.asUint8List();
-      if (bytes.isNotEmpty) {
-        await sampleFile.writeAsBytes(bytes, flush: true);
-        return sampleFile.path;
-      }
-    } catch (_) {}
-
-    const double w = 1080.0;
-    const double h = 1080.0;
-    final ui.PictureRecorder rec = ui.PictureRecorder();
-    final Canvas c = Canvas(rec);
-    final Paint bgPaint = Paint()
-      ..shader = ui.Gradient.linear(
-        const Offset(0, 0),
-        const Offset(w, h),
-        const [Color(0xFF1E3A8A), Color(0xFF3B82F6), Color(0xFF60A5FA)],
-      );
-    c.drawRect(const Rect.fromLTWH(0, 0, w, h), bgPaint);
-    _drawTextOnCanvas(
-      canvas: c,
-      text: 'శుభోదయం',
-      offset: const Offset(0, 480),
-      maxWidth: w,
-      fontSize: 80,
-      color: const Color(0xFFFFFFFF),
-      fontWeight: FontWeight.w900,
-      textAlign: TextAlign.center,
-    );
-    final ui.Picture pic = rec.endRecording();
-    final ui.Image img = await pic.toImage(w.round(), h.round());
-    final ByteData? bd = await img.toByteData(format: ui.ImageByteFormat.png);
-    img.dispose();
-    if (bd != null) {
-      await sampleFile.writeAsBytes(bd.buffer.asUint8List(), flush: true);
-      return sampleFile.path;
-    }
-    return '';
-  }
-
-  static Future<bool> triggerDeviceOnlyTestNotification({
-    String categoryKey = 'morning',
-  }) async {
-    try {
-      final plugin = _backgroundNotifications;
-      await _initializeLocalNotifications(plugin);
-
-      final localProfile = await PosterProfileService.loadLocal();
-      final String userName = localProfile.displayName.trim().isNotEmpty
-          ? localProfile.displayName.trim()
-          : 'సురేష్';
-      String userPhotoUrl = localProfile.photoPath.trim().isNotEmpty
-          ? localProfile.photoPath.trim()
-          : localProfile.photoUrl.trim();
-
-      final AppFlowSnapshot flowSnapshot = await AppFlowService.loadSnapshot();
-      final AppLanguage appLanguage = flowSnapshot.language;
-
-      final String footerText = _defaultFooterTextForLanguage(appLanguage);
-      final String headerText = _defaultHeaderText(
-        categoryKey: categoryKey,
-        language: appLanguage,
-        userName: userName,
-        fallbackTitle: 'శుభోదయం',
-      );
-
-      String posterImageUrl = '';
-      try {
-        final templates = await ApprovedCreatorTemplateService().fetchApprovedTemplates(maxItems: 5);
-        if (templates.isNotEmpty) {
-          final matched = templates.firstWhere(
-            (t) => t.imageUrl.trim().isNotEmpty,
-            orElse: () => templates.first,
-          );
-          posterImageUrl = matched.imageUrl.trim().isNotEmpty
-              ? matched.imageUrl.trim()
-              : matched.thumbnailUrl.trim();
-        }
-      } catch (_) {}
-
-      if (posterImageUrl.isEmpty) {
-        posterImageUrl = await _createOrGetSampleTestPoster();
-      }
-
-      final _NotificationArtifactBundle bundle =
-          await _buildNotificationArtifactBundle(
-            posterImageUrl: posterImageUrl,
-            posterBaseImageUrl: '',
-            userPhotoUrl: userPhotoUrl,
-            userName: userName,
-            headerText: headerText,
-            footerText: footerText,
-            categoryKey: categoryKey,
-            title: 'శుభోదయం',
-            body: '$userName గారు, మీ పోస్టర్ సిద్ధంగా ఉంది! వాట్సాప్‌లో షేర్ చేయండి.',
-          );
-
-      const int id = 99991;
-      await plugin.show(
-        id: id,
-        title: 'శుభోదయం',
-        body: '$userName గారు, మీ పోస్టర్ సిద్ధంగా ఉంది! వాట్సాప్‌లో షేర్ చేయండి.',
-        notificationDetails: bundle.details,
-        payload: jsonEncode(<String, String>{
-          'route': 'home',
-          'categoryKey': categoryKey,
-          'source': 'test_notification',
-        }),
-      );
-      return true;
-    } catch (e, st) {
-      developer.log(
-        'triggerDeviceOnlyTestNotification failed: $e',
-        name: 'notification.service',
-        error: e,
-        stackTrace: st,
-      );
-      return false;
     }
   }
 
