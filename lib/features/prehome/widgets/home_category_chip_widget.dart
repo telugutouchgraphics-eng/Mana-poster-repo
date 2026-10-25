@@ -87,10 +87,10 @@ class _CategoryChipState extends State<_CategoryChip> {
               ? Colors.white.withValues(alpha: 0.18)
               : const Color(0xFF6D28D9).withValues(alpha: 0.10),
           child: Container(
-            constraints: BoxConstraints(minHeight: showDate ? 29 : 27),
+            constraints: BoxConstraints(minHeight: showDate ? 28 : 26),
             padding: EdgeInsets.symmetric(
-              horizontal: showDate ? 7 : 8,
-              vertical: showDate ? 2.5 : 3.5,
+              horizontal: showDate ? 6.5 : 7,
+              vertical: showDate ? 1.5 : 2.5,
             ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
@@ -101,7 +101,7 @@ class _CategoryChipState extends State<_CategoryChip> {
               children: <Widget>[
                 if (iconAssetPath != null) ...<Widget>[
                   _CategoryChipAssetIcon(assetPath: iconAssetPath),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 4.5),
                 ],
                 Flexible(
                   child: showDate
@@ -115,8 +115,8 @@ class _CategoryChipState extends State<_CategoryChip> {
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
                               style: TextStyle(
-                                fontSize: 9.8,
-                                height: 1.02,
+                                fontSize: 11.0,
+                                height: 1.05,
                                 fontWeight: FontWeight.w700,
                                 color: textColor,
                               ),
@@ -127,7 +127,7 @@ class _CategoryChipState extends State<_CategoryChip> {
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
                               style: TextStyle(
-                                fontSize: 8.5,
+                                fontSize: 9.5,
                                 height: 1.0,
                                 fontWeight: FontWeight.w700,
                                 color: secondaryTextColor,
@@ -141,8 +141,8 @@ class _CategoryChipState extends State<_CategoryChip> {
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
                           style: TextStyle(
-                            fontSize: 10.4,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12.0,
+                            fontWeight: FontWeight.w700,
                             color: textColor,
                           ),
                         ),
@@ -167,13 +167,17 @@ class _CategoryChipAssetIcon extends StatelessWidget {
     final isNetwork = lower.startsWith('https://');
     final isSvg = lower.endsWith('.svg') || lower.contains('.svg?');
     return Container(
-      width: 15,
-      height: 15,
-      padding: const EdgeInsets.all(1),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      width: 21,
+      height: 21,
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Color(0x1F000000),
+            blurRadius: 2,
+            offset: Offset(0, 0.8),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: isNetwork

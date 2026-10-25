@@ -1,16 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Jokes and Comedy">
   <defs>
-    <linearGradient id="bg" x1="18" y1="10" x2="110" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#FACC15"/><stop offset="1" stop-color="#F97316"/></linearGradient>
-    <radialGradient id="shine" cx="38" cy="28" r="74" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity="0.78"/><stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0.16"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
-    <linearGradient id="gold" x1="31" y1="25" x2="96" y2="104" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF7B2"/><stop offset="0.5" stop-color="#FBBF24"/><stop offset="1" stop-color="#B45309"/></linearGradient>
-    <linearGradient id="silver" x1="28" y1="22" x2="101" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="0.55" stop-color="#D8E3F0"/><stop offset="1" stop-color="#7C8EA5"/></linearGradient>
-    <linearGradient id="green" x1="21" y1="25" x2="105" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset="0.55" stop-color="#22C55E"/><stop offset="1" stop-color="#166534"/></linearGradient>
-    <linearGradient id="warm" x1="25" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#FED7AA"/><stop offset="0.48" stop-color="#FB923C"/><stop offset="1" stop-color="#B91C1C"/></linearGradient>
-    <linearGradient id="blue" x1="24" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#BAE6FD"/><stop offset="0.5" stop-color="#38BDF8"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient>
+    <!-- Background Fun Glow -->
+    <radialGradient id="jokeBg" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#FFF9C4"/>
+      <stop offset="35%" stop-color="#FFE082"/>
+      <stop offset="70%" stop-color="#FF9800"/>
+      <stop offset="100%" stop-color="#E65100"/>
+    </radialGradient>
+    <!-- 3D Laughing Face Sphere -->
+    <radialGradient id="faceSphere" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FFFDE7"/>
+      <stop offset="30%" stop-color="#FFEB3B"/>
+      <stop offset="70%" stop-color="#FDD835"/>
+      <stop offset="100%" stop-color="#F57F17"/>
+    </radialGradient>
+    <!-- Teardrops Gradient -->
+    <linearGradient id="joyTears" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E1F5FE"/>
+      <stop offset="50%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#0288D1"/>
+    </linearGradient>
+    <!-- Rosy Cheek Blush -->
+    <radialGradient id="blushRed" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF5252" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FF1744" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <circle cx="64" cy="64" r="60" fill="url(#bg)"/>
-  <circle cx="64" cy="64" r="60" fill="url(#shine)"/>
-  <ellipse cx="64" cy="113" rx="36" ry="7" fill="#111827" opacity="0.16"/>
-  <circle cx="64" cy="64" r="52" fill="#FFFFFF" opacity="0.10"/>
-  <circle cx="64" cy="64" r="39" fill="url(#gold)"/><path d="M48 57c4-6 9-6 13 0M77 57c4-6 9-6 13 0" stroke="#7C2D12" stroke-width="6" stroke-linecap="round"/><path d="M45 75c9 18 29 18 38 0" fill="#7C2D12"/><path d="M51 77c8 7 18 7 26 0" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="36" cy="35" r="9" fill="#fff" opacity=".55"/>
+
+  <!-- Aura -->
+  <circle cx="64" cy="64" r="60" fill="url(#jokeBg)"/>
+
+  <!-- Laughing Face 3D Sphere -->
+  <circle cx="64" cy="64" r="48" fill="url(#faceSphere)"/>
+
+  <!-- Specular 3D Highlight on Face -->
+  <ellipse cx="48" cy="34" rx="20" ry="10" fill="#FFFFFF" opacity="0.45" transform="rotate(-20, 48, 34)"/>
+
+  <!-- Rosy Cheeks -->
+  <circle cx="34" cy="68" r="10" fill="url(#blushRed)"/>
+  <circle cx="94" cy="68" r="10" fill="url(#blushRed)"/>
+
+  <!-- Laughing Squeezed Eyes (Cheerfully Curved) -->
+  <!-- Left Eye -->
+  <path d="M36 50 C42 42 52 42 58 50" fill="none" stroke="#3E2723" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Right Eye -->
+  <path d="M70 50 C76 42 86 42 92 50" fill="none" stroke="#3E2723" stroke-width="5.5" stroke-linecap="round"/>
+
+  <!-- Eyebrows raised in laughter -->
+  <path d="M34 40 C42 34 50 36 54 42" fill="none" stroke="#5D4037" stroke-width="3" stroke-linecap="round"/>
+  <path d="M94 40 C86 34 78 36 74 42" fill="none" stroke="#5D4037" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Big Open Laughing Mouth -->
+  <!-- Mouth Cavity -->
+  <path d="M34 66 C34 94 94 94 94 66 Z" fill="#212121"/>
+  <!-- Upper Pearly White Teeth -->
+  <path d="M38 66 C42 72 86 72 90 66 Z" fill="#FFFFFF"/>
+  <!-- Pink Tongue -->
+  <path d="M48 84 C48 76 80 76 80 84 C76 92 52 92 48 84 Z" fill="#E91E63"/>
+
+  <!-- Tears of Joy (Streaming out of eyes) -->
+  <!-- Left Tear -->
+  <path d="M26 56 C20 62 20 72 26 76 C32 72 32 62 26 56 Z" fill="url(#joyTears)"/>
+  <circle cx="25" cy="72" r="1.5" fill="#FFFFFF"/>
+  <!-- Right Tear -->
+  <path d="M102 56 C108 62 108 72 102 76 C96 72 96 62 102 56 Z" fill="url(#joyTears)"/>
+  <circle cx="103" cy="72" r="1.5" fill="#FFFFFF"/>
+
+  <!-- Joyful Star Sparkles around head -->
+  <g fill="#FFFFFF">
+    <polygon points="20,24 22,28 26,29 22,31 20,35 18,31 14,29 18,28" opacity="0.9"/>
+    <polygon points="106,26 108,30 112,31 108,33 106,37 104,33 100,31 104,30" opacity="0.9"/>
+  </g>
 </svg>

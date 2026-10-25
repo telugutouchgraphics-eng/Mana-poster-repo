@@ -42,7 +42,10 @@ object ManaPosterNotificationRenderer {
     private const val channelDescription = "General reminders and event updates"
 
     fun show(context: Context, message: RemoteMessage) {
-        val data = message.data
+        showWithData(context, message.data, message)
+    }
+
+    fun showWithData(context: Context, data: Map<String, String>, message: RemoteMessage? = null) {
         if (data.isEmpty()) {
             return
         }
@@ -175,9 +178,9 @@ object ManaPosterNotificationRenderer {
         postNotification(context, notificationId, builder.build())
     }
 
-    private fun uniqueNotificationId(message: RemoteMessage, data: Map<String, String>): Int {
+    private fun uniqueNotificationId(message: RemoteMessage?, data: Map<String, String>): Int {
         val stableSeed = listOf(
-            message.messageId.orEmpty().trim(),
+            message?.messageId.orEmpty().trim(),
             data["messageId"].orEmpty().trim(),
             data["sentAt"].orEmpty().trim(),
             data["renderedAt"].orEmpty().trim(),
@@ -234,13 +237,20 @@ object ManaPosterNotificationRenderer {
     }
 
     private fun postNotification(context: Context, notificationId: Int, notification: Notification) {
+        val enabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        Log.i("ManaPosterNotif", "postNotification id=$notificationId areNotificationsEnabled=$enabled")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             Log.w("ManaPosterNotif", "notification skipped: POST_NOTIFICATIONS not granted")
             return
         }
-        NotificationManagerCompat.from(context).notify(notificationId, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+            Log.i("ManaPosterNotif", "NotificationManagerCompat.notify called successfully for id=$notificationId")
+        } catch (t: Throwable) {
+            Log.e("ManaPosterNotif", "NotificationManagerCompat.notify failed for id=$notificationId", t)
+        }
     }
 
     private fun notificationPaletteIndex(categoryKey: String, requestedPaletteIndex: String): Int {
@@ -395,6 +405,19 @@ object ManaPosterNotificationRenderer {
     private fun downloadBitmap(url: String): Bitmap? {
         if (url.isBlank()) {
             return null
+        }
+        if (url.startsWith("/") || url.startsWith("file://")) {
+            val path = if (url.startsWith("file://")) url.removePrefix("file://") else url
+            return try {
+                val file = java.io.File(path)
+                if (file.exists()) {
+                    val bytes = file.readBytes()
+                    decodeSampledBitmap(bytes, maxWidth = 1080, maxHeight = 720)
+                } else null
+            } catch (t: Throwable) {
+                Log.w("ManaPosterNotif", "local bitmap read failed: $url", t)
+                null
+            }
         }
         var connection: HttpURLConnection? = null
         return try {

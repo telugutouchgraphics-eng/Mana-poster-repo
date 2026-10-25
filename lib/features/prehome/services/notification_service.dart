@@ -10,7 +10,9 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
 import 'package:image/image.dart' as img;
@@ -2876,6 +2878,168 @@ class NotificationService {
         stackTrace: stackTrace,
       );
       return posterPath;
+    }
+  }
+
+  static Future<String> _createOrGetSampleTestPoster() async {
+    final Directory directory = await getTemporaryDirectory();
+    final File sampleFile = File('${directory.path}/sample_test_poster.png');
+    if (await sampleFile.exists() && await sampleFile.length() > 0) {
+      return sampleFile.path;
+    }
+
+    try {
+      final ByteData data = await rootBundle.load('assets/branding/mana_poster_logo.png');
+      final Uint8List bytes = data.buffer.asUint8List();
+      if (bytes.isNotEmpty) {
+        await sampleFile.writeAsBytes(bytes, flush: true);
+        return sampleFile.path;
+      }
+    } catch (_) {}
+
+    const double w = 1080.0;
+    const double h = 1080.0;
+    final ui.PictureRecorder rec = ui.PictureRecorder();
+    final Canvas c = Canvas(rec);
+    final Paint bgPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(0, 0),
+        const Offset(w, h),
+        const [Color(0xFF1E3A8A), Color(0xFF3B82F6), Color(0xFF60A5FA)],
+      );
+    c.drawRect(const Rect.fromLTWH(0, 0, w, h), bgPaint);
+    _drawTextOnCanvas(
+      canvas: c,
+      text: 'శుభోదయం',
+      offset: const Offset(0, 480),
+      maxWidth: w,
+      fontSize: 80,
+      color: const Color(0xFFFFFFFF),
+      fontWeight: FontWeight.w900,
+      textAlign: TextAlign.center,
+    );
+    final ui.Picture pic = rec.endRecording();
+    final ui.Image img = await pic.toImage(w.round(), h.round());
+    final ByteData? bd = await img.toByteData(format: ui.ImageByteFormat.png);
+    img.dispose();
+    if (bd != null) {
+      await sampleFile.writeAsBytes(bd.buffer.asUint8List(), flush: true);
+      return sampleFile.path;
+    }
+    return '';
+  }
+
+  static Future<bool> triggerDeviceOnlyTestNotification({
+    String categoryKey = 'morning',
+  }) async {
+    try {
+      final plugin = _backgroundNotifications;
+      await _initializeLocalNotifications(plugin);
+
+      final localProfile = await PosterProfileService.loadLocal();
+      final String userName = localProfile.nameTelugu.trim().isNotEmpty
+          ? localProfile.nameTelugu.trim()
+          : (localProfile.displayName.trim().isNotEmpty && localProfile.displayName.trim().toLowerCase() != 'user'
+              ? localProfile.displayName.trim()
+              : (localProfile.nameEnglish.trim().isNotEmpty ? localProfile.nameEnglish.trim() : 'సురేష్'));
+      String userPhotoUrl = localProfile.photoPath.trim().isNotEmpty
+          ? localProfile.photoPath.trim()
+          : (localProfile.originalPhotoPath.trim().isNotEmpty
+              ? localProfile.originalPhotoPath.trim()
+              : localProfile.photoUrl.trim());
+
+      final AppFlowSnapshot flowSnapshot = await AppFlowService.loadSnapshot();
+      final AppLanguage appLanguage = flowSnapshot.language;
+
+      final String footerText = _defaultFooterTextForLanguage(appLanguage);
+      final String headerText = _defaultHeaderText(
+        categoryKey: categoryKey,
+        language: appLanguage,
+        userName: userName,
+        fallbackTitle: 'శుభోదయం',
+      );
+
+      String posterImageUrl = '';
+      try {
+        final templates = await ApprovedCreatorTemplateService().fetchApprovedTemplates(maxItems: 5);
+        if (templates.isNotEmpty) {
+          final matched = templates.firstWhere(
+            (t) => t.imageUrl.trim().isNotEmpty,
+            orElse: () => templates.first,
+          );
+          posterImageUrl = matched.imageUrl.trim().isNotEmpty
+              ? matched.imageUrl.trim()
+              : matched.thumbnailUrl.trim();
+        }
+      } catch (_) {}
+
+      if (posterImageUrl.isEmpty) {
+        posterImageUrl = await _createOrGetSampleTestPoster();
+      }
+
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          const platformChannel = MethodChannel('mana_poster/test_notification');
+          final bool? success = await platformChannel.invokeMethod<bool>(
+            'show_native_notification',
+            <String, String>{
+              'posterImage': posterImageUrl,
+              'categoryKey': categoryKey,
+              'userName': userName,
+              'userPhoto': userPhotoUrl,
+              'headerText': headerText,
+              'footerText': footerText,
+              'title': 'Mana Poster Ai',
+              'body': '$userName గారు, మీ పోస్టర్ సిద్ధంగా ఉంది! వాట్సాప్‌లో షేర్ చేయండి.',
+              'route': 'home',
+            },
+          );
+          if (success == true) {
+            return true;
+          }
+        } catch (nativeErr) {
+          developer.log(
+            'Native notification invocation failed, falling back: $nativeErr',
+            name: 'notification.service',
+            error: nativeErr,
+          );
+        }
+      }
+
+      final _NotificationArtifactBundle bundle =
+          await _buildNotificationArtifactBundle(
+            posterImageUrl: posterImageUrl,
+            posterBaseImageUrl: '',
+            userPhotoUrl: userPhotoUrl,
+            userName: userName,
+            headerText: headerText,
+            footerText: footerText,
+            categoryKey: categoryKey,
+            title: 'శుభోదయం',
+            body: '$userName గారు, మీ పోస్టర్ సిద్ధంగా ఉంది! వాట్సాప్‌లో షేర్ చేయండి.',
+          );
+
+      const int id = 99991;
+      await plugin.show(
+        id: id,
+        title: 'శుభోదయం',
+        body: '$userName గారు, మీ పోస్టర్ సిద్ధంగా ఉంది! వాట్సాప్‌లో షేర్ చేయండి.',
+        notificationDetails: bundle.details,
+        payload: jsonEncode(<String, String>{
+          'route': 'home',
+          'categoryKey': categoryKey,
+          'source': 'test_notification',
+        }),
+      );
+      return true;
+    } catch (e, st) {
+      developer.log(
+        'triggerDeviceOnlyTestNotification failed: $e',
+        name: 'notification.service',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
     }
   }
 

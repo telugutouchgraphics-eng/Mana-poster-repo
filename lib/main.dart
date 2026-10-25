@@ -72,6 +72,17 @@ Future<void> main() async {
     () async {
       final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
       FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+      const MethodChannel('mana_poster/test_notification').setMethodCallHandler((call) async {
+        developer.log('test_notification method called: ${call.method}', name: 'notification.test');
+        if (call.method == 'trigger_test') {
+          final String cat = (call.arguments as String?)?.trim().isNotEmpty == true
+              ? (call.arguments as String).trim()
+              : 'morning';
+          await NotificationService.triggerDeviceOnlyTestNotification(categoryKey: cat);
+          return true;
+        }
+        return false;
+      });
       if (kIsWeb) {
         configureWebUrlStrategy();
       }
