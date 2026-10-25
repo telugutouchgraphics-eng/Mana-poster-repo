@@ -26,6 +26,10 @@ Future<void> showSubscriptionExitVideoPromptIfAvailable(
   SubscriptionExitVideoService service = const SubscriptionExitVideoService(),
   required Future<void> Function(BuildContext context) onSubscribe,
 }) async {
+  if (!_SubscriptionVideoPromptPreloadCache.canShowExitPrompt()) {
+    return;
+  }
+  _SubscriptionVideoPromptPreloadCache.markExitPromptShown();
   final prepared = await _SubscriptionVideoPromptPreloadCache.take(
     fieldName: _SubscriptionVideoPromptPreloadCache.exitFieldName,
     service: service,
@@ -312,8 +316,47 @@ class _SubscriptionExitVideoDialogState
 
   @override
   void dispose() {
-    _controller?.dispose();
+    try {
+      _controller?.pause();
+      _controller?.setVolume(0.0);
+      _controller?.dispose();
+    } catch (_) {}
     super.dispose();
+  }
+
+  Future<void> _silenceAndPauseVideo() async {
+    try {
+      final controller = _controller;
+      if (controller != null) {
+        await controller.pause();
+        await controller.setVolume(0.0);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleSkip() async {
+    await _silenceAndPauseVideo();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _handlePrimaryTap() async {
+    await _silenceAndPauseVideo();
+    if (!mounted) {
+      return;
+    }
+    if (widget.onPrimaryTap == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    await Future<void>.delayed(Duration.zero);
+    if (!widget.parentContext.mounted) {
+      return;
+    }
+    await widget.onPrimaryTap!(widget.parentContext);
   }
 
   Future<void> _initialize() async {
@@ -363,20 +406,6 @@ class _SubscriptionExitVideoDialogState
     }
   }
 
-  Future<void> _handlePrimaryTap() async {
-    if (widget.onPrimaryTap == null) {
-      Navigator.of(context).pop();
-      return;
-    }
-    final navigator = Navigator.of(context);
-    navigator.pop();
-    await Future<void>.delayed(Duration.zero);
-    if (!widget.parentContext.mounted) {
-      return;
-    }
-    await widget.onPrimaryTap!(widget.parentContext);
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
@@ -384,89 +413,95 @@ class _SubscriptionExitVideoDialogState
     final ready = controller != null && controller.value.isInitialized;
     final showFallbackNote = !hasVideo || _hasError;
 
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: SizedBox(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        _silenceAndPauseVideo();
+      },
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: AspectRatio(
+                    aspectRatio: showFallbackNote
+                        ? 9 / 12
+                        : (ready ? controller.value.aspectRatio : 9 / 16),
+                    child: ColoredBox(
+                      color: const Color(0xFF0F172A),
+                      child: showFallbackNote
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22,
+                                vertical: 26,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  Text(
+                                    widget.fallbackTitle,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    widget.fallbackMessage,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFE2E8F0),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.45,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ready
+                          ? VideoPlayer(controller)
+                          : const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
                 width: double.infinity,
-                child: AspectRatio(
-                  aspectRatio: showFallbackNote
-                      ? 9 / 12
-                      : (ready ? controller.value.aspectRatio : 9 / 16),
-                  child: ColoredBox(
-                    color: const Color(0xFF0F172A),
-                    child: showFallbackNote
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 22,
-                              vertical: 26,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: <Widget>[
-                                Text(
-                                  widget.fallbackTitle,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.1,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Text(
-                                  widget.fallbackMessage,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFFE2E8F0),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.45,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ready
-                        ? VideoPlayer(controller)
-                        : const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
-                          ),
+                child: FilledButton(
+                  onPressed: _handlePrimaryTap,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6D28D9),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
+                  child: Text(widget.primaryLabel),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _handlePrimaryTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6D28D9),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                child: Text(widget.primaryLabel),
+              TextButton(
+                onPressed: _handleSkip,
+                child: Text(widget.secondaryLabel),
               ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(widget.secondaryLabel),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -485,6 +520,20 @@ class _SubscriptionVideoPromptPreloadCache {
   static const String thanksFieldName = 'subscriptionThanksVideo';
   static final Map<String, Future<_PreparedSubscriptionVideo?>> _pending =
       <String, Future<_PreparedSubscriptionVideo?>>{};
+  static DateTime? _lastExitPromptShownAt;
+
+  static bool canShowExitPrompt() {
+    final now = DateTime.now();
+    final last = _lastExitPromptShownAt;
+    if (last != null && now.difference(last).inSeconds < 60) {
+      return false;
+    }
+    return true;
+  }
+
+  static void markExitPromptShown() {
+    _lastExitPromptShownAt = DateTime.now();
+  }
 
   static Future<_PreparedSubscriptionVideo?> prepare({
     required String fieldName,

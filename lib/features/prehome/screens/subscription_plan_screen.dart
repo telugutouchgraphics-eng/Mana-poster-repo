@@ -50,7 +50,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   Future<void> _handleBackPress() async {
     if (_exitPromptAttempted || !mounted) {
-      Navigator.of(context).maybePop();
+      Navigator.of(context).pop();
       return;
     }
     _exitPromptAttempted = true;
@@ -59,7 +59,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       onSubscribe: (promptContext) => _subscribeYearlyPlan(),
     );
     if (mounted) {
-      Navigator.of(context).maybePop();
+      Navigator.of(context).pop();
     }
   }
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
@@ -2376,7 +2376,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       _noEditorAssetsClean,
     ];
     return PopScope(
-      canPop: _exitPromptAttempted,
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) {
           _handleBackPress();
