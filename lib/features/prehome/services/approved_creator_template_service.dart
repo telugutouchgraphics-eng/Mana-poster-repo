@@ -2974,6 +2974,12 @@ class ApprovedCreatorTemplateService {
 
     }
 
+    final isInstantUpload = template.publishAtMillis <= 0 ||
+        (template.publishAtMillis - template.createdAtMillis).abs() <= 120000;
+    if (isInstantUpload) {
+      return true;
+    }
+
     final visibleFrom = _templateVisibleFromMillis(template);
 
     if (visibleFrom <= 0) {

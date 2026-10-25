@@ -3208,6 +3208,11 @@ class _HomeScreenState extends State<HomeScreen>
     if (visibleFromMillis <= 0) {
       return true;
     }
+    final isInstantUpload = item.publishAtMillis <= 0 ||
+        (item.publishAtMillis - item.createdAtMillis).abs() <= 120000;
+    if (isInstantUpload) {
+      return true;
+    }
     final visibleFromIst = IstTimeService.toIst(
       DateTime.fromMillisecondsSinceEpoch(visibleFromMillis),
     );

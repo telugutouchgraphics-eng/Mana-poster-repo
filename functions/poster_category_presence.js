@@ -46,6 +46,14 @@ function isGoodNightPosterReleased(poster, nowMillis) {
     ...String(poster.categoryLabel || "").split(/\s+/)]
       .map((value) => String(value).toLowerCase().replace(/[\s_-]+/g, ""));
   if (!signals.some((value) => ["goodnight", "night", "ratri"].includes(value))) return true;
+
+  // Instant uploads (published immediately without future schedule) should appear instantly
+  const isInstantUpload = poster.createdBySurface === "app_posters" ||
+    !poster.requestedPublishAt ||
+    Number(poster.requestedPublishAt) <= 0 ||
+    Math.abs(Number(poster.publishAt || 0) - Number(poster.createdAt || 0)) <= 120000;
+  if (isInstantUpload) return true;
+
   const visibleFrom = poster.publishAt || poster.createdAt;
   if (!visibleFrom || visibleFrom <= 0) return true;
   const release = (Math.floor((visibleFrom + 19800000) / 86400000) + 1) * 86400000 - 19800000;
