@@ -82,6 +82,17 @@ void main() {
         expect(bodyWithoutName.contains('User'), isFalse, reason: 'Unexpected User for ${language.name}');
       }
     });
+
+    test('All 18 languages produce valid WhatsApp share footer labels', () {
+      expect(AppLanguage.values.length, equals(18));
+      for (final language in AppLanguage.values) {
+        final footer = NotificationService.defaultFooterTextForLanguage(language);
+        expect(footer.trim().isNotEmpty, isTrue, reason: 'Failed for ${language.name}');
+      }
+      expect(NotificationService.defaultFooterTextForLanguage(AppLanguage.telugu), equals('వాట్సాప్‌లో షేర్ చేయండి'));
+      expect(NotificationService.defaultFooterTextForLanguage(AppLanguage.english), equals('Share on WhatsApp'));
+      expect(NotificationService.defaultFooterTextForLanguage(AppLanguage.hindi), equals('व्हाट्सएप पर शेयर करें'));
+    });
   });
 }
 

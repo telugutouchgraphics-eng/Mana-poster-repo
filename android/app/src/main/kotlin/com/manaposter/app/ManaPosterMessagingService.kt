@@ -96,7 +96,6 @@ object ManaPosterNotificationRenderer {
             expandedViews.setTextViewText(R.id.notification_expanded_text, header)
             expandedViews.setTextViewText(R.id.notification_expanded_name, resolvedUserName.ifBlank { "User" })
             expandedViews.setTextViewText(R.id.notification_expanded_share_bg, footerText.ifBlank { "Share" })
-            expandedViews.setInt(R.id.notification_expanded_share_bg, "setBackgroundResource", shareBackgroundRes)
             expandedViews.setImageViewResource(R.id.notification_expanded_avatar, R.mipmap.ic_launcher)
             expandedViews.setViewVisibility(R.id.notification_expanded_title, View.VISIBLE)
             expandedViews.setViewVisibility(R.id.notification_expanded_celebration_top, View.GONE)
@@ -119,6 +118,9 @@ object ManaPosterNotificationRenderer {
             }
 
             val contentIntent = buildContentIntent(context, route, categoryKey, resolvedUserName)
+            if (contentIntent != null) {
+                expandedViews.setOnClickPendingIntent(R.id.notification_expanded_share_container, contentIntent)
+            }
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(appName)

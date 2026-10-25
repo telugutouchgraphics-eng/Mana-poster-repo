@@ -35,6 +35,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val notificationTapAtKey = "notificationTapAt"
     private val notificationTapCategoryKey = "notificationTapCategory"
     private val appUpdateRequestCode = 3017
+    private var testNotificationChannel: MethodChannel? = null
     private val appUpdateManager: AppUpdateManager by lazy {
         AppUpdateManagerFactory.create(this)
     }
@@ -47,12 +48,48 @@ class MainActivity : FlutterFragmentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         rememberNotificationLaunch(intent)
+        handleTestNotificationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         rememberNotificationLaunch(intent)
+        handleTestNotificationIntent(intent)
+    }
+
+    private var pendingTestCategory: String? = null
+
+    private fun handleTestNotificationIntent(intent: Intent?) {
+        if (intent == null) return
+        val category = intent.getStringExtra("trigger_test_notification")
+        if (!category.isNullOrBlank()) {
+            pendingTestCategory = category
+            dispatchPendingTestNotification()
+        }
+    }
+
+    private fun dispatchPendingTestNotification() {
+        val category = pendingTestCategory ?: return
+        val channel = testNotificationChannel ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            Log.i("ManaPosterNotif", "dispatching trigger_test with category: $category")
+            channel.invokeMethod("trigger_test", category, object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    Log.i("ManaPosterNotif", "trigger_test success: $result")
+                    pendingTestCategory = null
+                }
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    Log.e("ManaPosterNotif", "trigger_test error: $errorCode - $errorMessage")
+                }
+                override fun notImplemented() {
+                    Log.w("ManaPosterNotif", "trigger_test notImplemented, will retry in 2s")
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        dispatchPendingTestNotification()
+                    }, 2000)
+                }
+            })
+        }, 1500)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -64,6 +101,8 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        testNotificationChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mana_poster/test_notification")
+        dispatchPendingTestNotification()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, screenSecurityChannelName)
             .setMethodCallHandler { call, result ->
